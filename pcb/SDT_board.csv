@@ -1,0 +1,20 @@
+Reference;Qty;Value;DNP;Footprint;Opis
+C1,C2,C3,C4,C5,C6,C7,C9,C10,C11,C12,C13,C14,C15,C16;15;100nF;;Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder;Unpolarized capacitor
+D1,D4;2;HDLO-2416;;Display_IntelligentAlpha:DL2416;.200" High Efficiency Red, 4-Digit 5x7 Dot Matrix Alphanumeric Intelligent Display with Memory/Decoder/Driver
+D2;1;SMF5.0CA;;Diode_SMD:D_SMF;SMF5.0CA
+D3;1;LED;;LED_SMD:LED_0603_1608Metric_Pad1.05x0.95mm_HandSolder;Light emitting diode
+F1;1;Polyfuse;;Fuse:Fuse_1206_3216Metric_Pad1.42x1.75mm_HandSolder;Resettable fuse, polymeric positive temperature coefficient
+H1,H2,H3,H4;4;MountingHole_Pad;;MountingHole:MountingHole_3.2mm_M3_Pad;Mounting Hole with connection
+J1;1;USB_B;;Connector_JST:JST_PH_B4B-PH-K_1x04_P2.00mm_Vertical;USB Type B connector
+J2;1;TC2030;;Connector:Tag-Connect_TC2030-IDC-NL_2x03_P1.27mm_Vertical;Tag-Connect’s 6-pins connector
+J3;1;Conn_01x02;DNP;Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical;Generic connector, single row, 01x02, script generated (kicad-library-utils/schlib/autogen/connector/)
+J4,J5;2;SFV4R-3STBE1HLF;;SFV4R3STBE1HLF;0.50mm Flex Connector, SFV-R Series, 4 Position, Bottom Side Contact, Side Entry Surface Mount ZIF Connector, Halogen Free, Lead Free with Cable-Lock, Gold Flash
+R1,R2;2;22R;;Resistor_SMD:R_0603_1608Metric_Pad0.98x0.95mm_HandSolder;Resistor
+R3;1;2K;;Resistor_SMD:R_0603_1608Metric_Pad0.98x0.95mm_HandSolder;Resistor
+R4,R5;2;100K;;Resistor_SMD:R_0603_1608Metric_Pad0.98x0.95mm_HandSolder;Resistor
+R6,R7;2;10k;;Resistor_SMD:R_0603_1608Metric_Pad0.98x0.95mm_HandSolder;Resistor
+U1;1;USBLC6-2SC6;;Package_TO_SOT_SMD:SOT-23-6_Handsoldering;Very low capacitance ESD protection diode, 2 data-line, SOT-23-6
+U2;1;LDI1117-3.3U;;Package_TO_SOT_SMD:SOT-89-3_Handsoldering;800mA Fixed Low Drop Positive Voltage Regulator, Fixed Output 3.3V, SOT-223
+U4;1;TMP117xxDRV;;Package_SON:WSON-6-1EP_2x2mm_P0.65mm_EP1x1.6mm;Digital Temperature Sensor with I2C/SMBus Interface, 16 bits, ±0.3°C, one-shot conversion, alert, nist traceable, EEPROM, WSON
+U5;1;STM32C071CBTx;;Package_QFP:LQFP-48_7x7mm_P0.5mm;STMicroelectronics Arm Cortex-M0+ MCU, 128KB flash, 24KB RAM, 45 GPIO, LQFP48_GP
+U6;1;SHT4x;;Sensor_Humidity:Sensirion_DFN-4_1.5x1.5mm_P0.8mm_SHT4x_NoCentralPad;Digital Humidity and Temperature Sensor, ±1%RH, ±0.1°C, I2C, 1.08-3.6V, 16bit, DFN-4

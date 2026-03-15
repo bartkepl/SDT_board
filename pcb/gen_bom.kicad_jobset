@@ -1,0 +1,81 @@
+{
+  "jobs": [
+    {
+      "description": "",
+      "id": "9260bef8-6454-4f70-b87b-2d9f82810d7b",
+      "settings": {
+        "bom_format_preset_name": "",
+        "bom_preset_name": "",
+        "description": "",
+        "exclude_dnp": false,
+        "field_delimiter": ";",
+        "fields_group_by": [
+          "Value",
+          "${DNP}",
+          "Footprint"
+        ],
+        "fields_labels": [
+          "Reference",
+          "Qty",
+          "Value",
+          "DNP",
+          "Exclude from BOM",
+          "Exclude from Board",
+          "Footprint",
+          "Datasheet",
+          "Manufacturer_Name",
+          "Manufacturer_Part_Number",
+          "Sim.Pins",
+          "TME Electronic Components Part Number",
+          "TME Electronic Components Price/Stock",
+          "Height",
+          "Opis",
+          "#"
+        ],
+        "fields_ordered": [
+          "Reference",
+          "${QUANTITY}",
+          "Value",
+          "${DNP}",
+          "__${EXCLUDE_FROM_BOM}",
+          "__${EXCLUDE_FROM_BOARD}",
+          "Footprint",
+          "__Datasheet",
+          "__Manufacturer_Name",
+          "__Manufacturer_Part_Number",
+          "__Sim.Pins",
+          "__TME Electronic Components Part Number",
+          "__TME Electronic Components Price/Stock",
+          "__Height",
+          "Description",
+          "__${ITEM_NUMBER}"
+        ],
+        "filter_string": "",
+        "include_excluded_from_bom": true,
+        "keep_line_breaks": false,
+        "keep_tabs": false,
+        "output_filename": ".\\${PROJECTNAME}.csv",
+        "ref_delimiter": ",",
+        "ref_range_delimiter": "",
+        "sort_asc": true,
+        "sort_field": "Reference",
+        "string_delimiter": ""
+      },
+      "type": "sch_export_bom"
+    }
+  ],
+  "meta": {
+    "version": 1
+  },
+  "outputs": [
+    {
+      "description": "",
+      "id": "ea75f808-15ce-4f7d-9c82-9fd8b5e6a61f",
+      "only": [],
+      "settings": {
+        "output_path": ".\\"
+      },
+      "type": "folder"
+    }
+  ]
+}
