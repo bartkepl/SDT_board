@@ -22,8 +22,8 @@ Benchtop thermometer with SCPI and USB.
 ## License and Contribution
 
 Idea based on [SCPI Capable Thermometer](https://sebastianharnisch.de/scpi-enabled-thermometer/)
-Display part & footprint from [kicad-intelligent-displays](https://github.com/74hc595/kicad-intelligent-displays) by [74hc595](https://github.com/74hc595)
 
+Display part & footprint from [kicad-intelligent-displays](https://github.com/74hc595/kicad-intelligent-displays) by [74hc595](https://github.com/74hc595)
 
 [MIT License](/LICENSE)
 

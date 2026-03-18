@@ -1,0 +1,13 @@
+/*
+ * usbtmc_app.h
+ *
+ *  Created on: 18 mar 2026
+ *      Author: bniemiec
+ */
+
+#ifndef INC_USBTMC_APP_H_
+#define INC_USBTMC_APP_H_
+
+void usbtmc_app_task_iter(void);
+
+#endif /* INC_USBTMC_APP_H_ */
