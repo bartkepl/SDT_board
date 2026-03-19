@@ -2,7 +2,7 @@
  * sensor.h
  *
  *  Created on: 19 mar 2026
- *      Author: bniemiec
+ *      Author: bartkepl
  */
 
 #ifndef SENSOR_SENSOR_H_

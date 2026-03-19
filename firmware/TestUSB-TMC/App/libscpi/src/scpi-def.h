@@ -2,7 +2,7 @@
  * scpi_def.h
  *
  *  Created on: Dec 21, 2025
- *      Author: Bart
+ *      Author: bartkepl
  */
 
 #ifndef INC_SCPI_DEF_H_

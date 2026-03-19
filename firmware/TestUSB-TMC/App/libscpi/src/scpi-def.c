@@ -2,7 +2,7 @@
  * scpi_def.c
  *
  *  Created on: Dec 21, 2025
- *      Author: Bart
+ *      Author: bartkepl
  */
 
 
@@ -11,6 +11,7 @@
 #include <string.h>
 #include <usbtmc_app.h>
 #include <sensor.h>
+#include <display.h>
 
 
 /* ===== SCPI callbacks ===== */
@@ -28,6 +29,8 @@ static scpi_result_t SCPI_SensorTemperatureQ(scpi_t *context);
 static scpi_result_t SCPI_SensorIdQ(scpi_t *context);
 static scpi_result_t SCPI_SensorHumidityQ(scpi_t *context);
 static scpi_result_t SCPI_BootloaderEnterQ(scpi_t *context);
+static scpi_result_t SCPI_SensorBrightnessQ(scpi_t *context);
+static scpi_result_t SCPI_SensorBrightness(scpi_t *context);
 
 
 /* ===== SCPI command list ===== */
@@ -61,7 +64,8 @@ static const scpi_command_t scpi_commands[] = {
 	{.pattern = "SENSor:TEMPerature?", .callback = SCPI_SensorTemperatureQ,},
 	{.pattern = "SENSor:ID?", .callback = SCPI_SensorIdQ,},
 	{.pattern = "SENSor:HUMidity?", .callback = SCPI_SensorHumidityQ,},
-
+	{.pattern = "DISPlay:BRIGhtness?", .callback = SCPI_SensorBrightnessQ,},
+	{.pattern = "DISPlay:BRIGhtness", .callback = SCPI_SensorBrightness,},
 
     SCPI_CMD_LIST_END
 };
@@ -227,6 +231,23 @@ static scpi_result_t SCPI_BootloaderEnterQ(scpi_t *context) {
 
 	// Jump to app firmware
 	BOOTVTAB->Reset_Handler();
+
+	return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_SensorBrightnessQ(scpi_t *context){
+
+	return SCPI_RES_OK;
+}
+static scpi_result_t SCPI_SensorBrightness(scpi_t *context){
+	uint32_t brightness = 101;
+	SCPI_ParamUInt32(context, &brightness, 1);
+
+	if((brightness <= 100) && (brightness >= 0)){
+		Display_SetBrightness((uint8_t) brightness);
+	} else {
+		return SCPI_RES_ERR;
+	}
 
 	return SCPI_RES_OK;
 }

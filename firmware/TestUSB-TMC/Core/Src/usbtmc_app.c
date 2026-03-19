@@ -1,12 +1,4 @@
 /*
- * usbtmc_app.c
- *
- *  Created on: 18 mar 2026
- *      Author: bniemiec
- */
-
-
-/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2019 Nathan Conrad

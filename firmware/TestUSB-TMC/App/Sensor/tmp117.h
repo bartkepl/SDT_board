@@ -2,7 +2,7 @@
  * tmp117.h
  *
  *  Created on: 19 mar 2026
- *      Author: bniemiec
+ *      Author: bartkepl
  */
 
 #ifndef SENSOR_TMP117_H_

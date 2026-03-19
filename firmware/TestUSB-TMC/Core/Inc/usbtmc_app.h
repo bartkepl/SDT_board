@@ -2,7 +2,7 @@
  * usbtmc_app.h
  *
  *  Created on: 18 mar 2026
- *      Author: bniemiec
+ *      Author: bartkepl
  */
 
 #ifndef INC_USBTMC_APP_H_

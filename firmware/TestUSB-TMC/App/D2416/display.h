@@ -2,7 +2,7 @@
  * display.h
  *
  *  Created on: 19 mar 2026
- *      Author: bniemiec
+ *      Author: bartkepl
  */
 
 #ifndef D2416_DISPLAY_H_
@@ -12,5 +12,6 @@
 
 void Display_Init(void);
 void Display_task(void);
+void Display_SetBrightness(uint8_t percent);
 
 #endif /* D2416_DISPLAY_H_ */

@@ -2,7 +2,7 @@
  * sht45.h
  *
  *  Created on: 19 mar 2026
- *      Author: bniemiec
+ *      Author: bartkepl
  */
 
 #ifndef SENSOR_SHT45_H_

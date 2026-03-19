@@ -23,6 +23,6 @@ void DLR2416_WriteChar(uint8_t disp, uint8_t pos, char c);
 void DLR2416_WriteString(uint8_t disp, const char *str);
 void DLR2416_WriteString8(const char *str);
 
-void DLR2416_SetBrightness(uint8_t pwm);
+void DLR2416_SetBrightness(uint8_t percent);
 
 #endif /* INC_DLR2416_H_ */
