@@ -25,6 +25,10 @@ Idea based on [SCPI Capable Thermometer](https://sebastianharnisch.de/scpi-enabl
 
 Display part & footprint from [kicad-intelligent-displays](https://github.com/74hc595/kicad-intelligent-displays) by [74hc595](https://github.com/74hc595)
 
+USB-TMC library from TinyUSB [TinyUSB](https://github.com/hathach/tinyusb)
+
+SCPI parser library from [scpi-parser](https://github.com/j123b567/scpi-parser) by [Jan Breuer](https://github.com/j123b567)
+
 [MIT License](/LICENSE)
 
 Open to contributions in both software and hardware!

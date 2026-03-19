@@ -31,10 +31,12 @@
  *
  */
 
+#include <scpi/scpi.h>
 #include <string.h>
 #include <stdlib.h>     /* atoi */
 #include "tusb.h"
 #include "main.h"
+#include <scpi-def.h>
 
 #if (CFG_TUD_USBTMC_ENABLE_488)
 static usbtmc_response_capabilities_488_t const
@@ -78,7 +80,7 @@ tud_usbtmc_app_capabilities  =
 #define IEEE4882_STB_SER          (0x20u)
 #define IEEE4882_STB_SRQ          (0x40u)
 
-static const char idn[] = "TinyUSB,ModelNumber,SerialNumber,FirmwareVer123456\r\n";
+//static const char idn[] = "TinyUSB,ModelNumber,SerialNumber,FirmwareVer123456\r\n";
 //static const char idn[] = "TinyUSB,ModelNumber,SerialNumber,FirmwareVer and a bunch of other text to make it longer than a packet, perhaps? lets make it three transfers...\n";
 static volatile uint8_t status;
 
@@ -93,6 +95,10 @@ static uint32_t resp_delay = 125u; // Adjustable delay, to allow for better test
 static size_t buffer_len;
 static size_t buffer_tx_ix; // for transmitting using multiple transfers
 static uint8_t buffer[225]; // A few packets long should be enough.
+
+char reply[256];
+size_t reply_len;
+bool query_received;
 
 
 void tud_usbtmc_open_cb(uint8_t interface_id)
@@ -145,25 +151,15 @@ bool tud_usbtmc_msg_data_cb(void *data, size_t len, bool transfer_complete)
     return false; // buffer overflow!
   }
   queryState = transfer_complete;
+  reply_len = 0;
+  query_received = false;
   idnQuery = 0;
 
-  if ( transfer_complete && (len >= 4) &&
-       (!strncmp("*idn?", data, 4) || !strncmp("*IDN?", data, 4)) )
-  {
-    idnQuery = 1;
-  }
-
-  if ( transfer_complete &&
-       (!strncmp("delay ", data, 5) || !strncmp("DELAY ", data, 5)) )
-  {
-    queryState = 0;
-    int d = atoi((char*)data + 5);
-    if(d > 10000)
-      d = 10000;
-    if(d<0)
-      d=0;
-    resp_delay = (uint32_t)d;
-  }
+  if(transfer_complete && (len >=1) /* && !strncasecmp("*idn?",data,4) */) // we received a query
+    {
+      query_received = true;
+      SCPI_Main_Input(data, len);
+    }
   tud_usbtmc_start_bus_read();
   return true;
 }
@@ -210,6 +206,15 @@ bool tud_usbtmc_msgBulkIn_request_cb(usbtmc_msg_request_dev_dep_in const * reque
   return true;
 }
 
+void setReply (const char *data, size_t len) {
+  // attach replies to the buffer until the SCPI engine is finished.
+  // no one should run away with the data, because only one core has focus
+  // on scpi engine and USB state machine
+  // TODO verify
+  memcpy(reply + (reply_len * sizeof reply[0]), data, len);
+  reply_len += len;
+}
+
 void usbtmc_app_task_iter(void) {
   switch(queryState) {
   case 0:
@@ -233,17 +238,18 @@ void usbtmc_app_task_iter(void) {
     break;
   case 4: // time to transmit;
     if(bulkInStarted && (buffer_tx_ix == 0)) {
-      if(idnQuery)
-      {
-        tud_usbtmc_transmit_dev_msg_data(idn,  tu_min32(sizeof(idn)-1,msgReqLen),true,false);
-        queryState = 0;
-        bulkInStarted = 0;
-      }
-      else
-      {
-        buffer_tx_ix = tu_min32(buffer_len,msgReqLen);
-        tud_usbtmc_transmit_dev_msg_data(buffer, buffer_tx_ix, buffer_tx_ix == buffer_len, false);
-      }
+    	if(reply_len)
+    	      {
+    	        tud_usbtmc_transmit_dev_msg_data(reply,  tu_min32(reply_len,msgReqLen),true,false);
+    	        queryState = 0;
+    	        bulkInStarted = 0;
+    	        reply_len = 0;
+    	      }
+    	      else
+    	      {
+    	        buffer_tx_ix = tu_min32(buffer_len,msgReqLen);
+    	        tud_usbtmc_transmit_dev_msg_data(buffer, buffer_tx_ix, buffer_tx_ix == buffer_len, false);
+    	      }
       // MAV is cleared in the transfer complete callback.
     }
     break;

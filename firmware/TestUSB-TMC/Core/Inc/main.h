@@ -83,6 +83,10 @@ void Error_Handler(void);
 #define WR_GPIO_Port GPIOB
 #define CLR_Pin GPIO_PIN_2
 #define CLR_GPIO_Port GPIOB
+#define CU_Pin GPIO_PIN_12
+#define CU_GPIO_Port GPIOB
+#define CUE_Pin GPIO_PIN_13
+#define CUE_GPIO_Port GPIOB
 #define LED_Pin GPIO_PIN_10
 #define LED_GPIO_Port GPIOA
 #define CE1_1_Pin GPIO_PIN_3

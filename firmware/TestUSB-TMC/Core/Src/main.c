@@ -25,6 +25,9 @@
 #include <ctype.h>
 #include <stdio.h>
 #include "usbtmc_app.h"
+#include <scpi-def.h>
+#include <sensor.h>
+#include <display.h>
 
 
 /* USER CODE END Includes */
@@ -109,7 +112,10 @@ int main(void)
  // AppInit();
   HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
   HAL_Delay(100);
+  Sensor_Init(&hi2c1);
   tud_init(BOARD_TUD_RHPORT);
+  SCPI_Main_Init();
+  Display_Init();
   HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
 
 
@@ -122,6 +128,8 @@ int main(void)
   {
 	  tud_task();
 	  usbtmc_app_task_iter();
+	  Sensor_Task();
+	  Display_task();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -332,8 +340,9 @@ static void MX_GPIO_Init(void)
                           |LED_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, A1_Pin|WR_Pin|CLR_Pin|CE1_1_Pin
-                          |CE2_1_Pin|CE1_2_Pin|CE2_2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, A1_Pin|WR_Pin|CLR_Pin|CU_Pin
+                          |CUE_Pin|CE1_1_Pin|CE2_1_Pin|CE1_2_Pin
+                          |CE2_2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : D0_Pin D1_Pin D2_Pin D3_Pin
                            D4_Pin D5_Pin D6_Pin A0_Pin
@@ -346,10 +355,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : A1_Pin WR_Pin CLR_Pin CE1_1_Pin
-                           CE2_1_Pin CE1_2_Pin CE2_2_Pin */
-  GPIO_InitStruct.Pin = A1_Pin|WR_Pin|CLR_Pin|CE1_1_Pin
-                          |CE2_1_Pin|CE1_2_Pin|CE2_2_Pin;
+  /*Configure GPIO pins : A1_Pin WR_Pin CLR_Pin CU_Pin
+                           CUE_Pin CE1_1_Pin CE2_1_Pin CE1_2_Pin
+                           CE2_2_Pin */
+  GPIO_InitStruct.Pin = A1_Pin|WR_Pin|CLR_Pin|CU_Pin
+                          |CUE_Pin|CE1_1_Pin|CE2_1_Pin|CE1_2_Pin
+                          |CE2_2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;

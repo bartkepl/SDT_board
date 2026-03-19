@@ -27,6 +27,7 @@
 #include "bsp/board_api.h"
 #include "class/usbtmc/usbtmc.h"
 #include "class/usbtmc/usbtmc_device.h"
+#include <scpi-def.h>
 
 /* A combination of interfaces must have a unique product id, since PC will save device driver after the first plug.
  * Same VID/PID with different interface e.g MSC (first), then CDC (later) will possibly cause system error on PC.
@@ -126,7 +127,7 @@ enum
 uint8_t const desc_fs_configuration[] =
 {
   // Config number, interface count, string index, total length, attribute, power in mA
-  TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN, 0x00, 100),
+  TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN, 0x00, 300),
 
   TUD_USBTMC_DESC(ITF_NUM_USBTMC, /* _bulkMaxPacketLength = */ 64),
 };
@@ -201,10 +202,10 @@ enum {
 char const *string_desc_arr[] =
 {
   (const char[]) { 0x09, 0x04 }, // 0: is supported language is English (0x0409)
-  "TinyUSB",                     // 1: Manufacturer
-  "TinyUSB Device",              // 2: Product
+  SCPI_IDN_MANUFACTURER,                     // 1: Manufacturer
+  SCPI_IDN_MODEL,              // 2: Product
   NULL,                          // 3: Serials will use unique ID if possible
-  "TinyUSB USBTMC",              // 4: USBTMC
+  "USBTMC",              // 4: USBTMC
 };
 
 static uint16_t _desc_str[32 + 1];
@@ -222,8 +223,25 @@ uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
       break;
 
     case STRID_SERIAL:
-      chr_count = board_usb_get_serial(_desc_str + 1, 32);
-      break;
+    {
+      const char *model = SCPI_IDN_MODEL;
+      const char *serial = SCPI_IDN_SERIAL;
+
+      char serial_str[64];
+
+      // Złóż string: MODEL + " " + SERIAL
+      snprintf(serial_str, sizeof(serial_str), "%s_%s", model, serial);
+
+      // Konwersja ASCII -> UTF-16
+      chr_count = strlen(serial_str);
+      size_t const max_count = sizeof(_desc_str) / sizeof(_desc_str[0]) - 1;
+      if (chr_count > max_count) chr_count = max_count;
+
+      for (size_t i = 0; i < chr_count; i++) {
+        _desc_str[1 + i] = serial_str[i];
+      }
+    }
+    break;
 
     default:
       // Note: the 0xEE index string is a Microsoft OS 1.0 Descriptors.
