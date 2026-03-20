@@ -6,9 +6,9 @@
  */
 
 
-#include "sensor.h"
-#include "tmp117.h"
-#include "sht45.h"
+#include <sensor.h>
+#include <sht45.h>
+#include <tmp117.h>
 
 SensorData_t g_sensor;
 
@@ -17,7 +17,7 @@ static I2C_HandleTypeDef *sensor_i2c;
 static uint32_t lastTick = 0;
 static bool initialized = false;
 
-#define SENSOR_PERIOD_MS 900
+#define SENSOR_PERIOD_MS 100
 
 void Sensor_Init(I2C_HandleTypeDef *hi2c)
 {

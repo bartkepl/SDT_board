@@ -6,7 +6,7 @@
  */
 
 
-#include "tmp117.h"
+#include <tmp117.h>
 
 static I2C_HandleTypeDef *i2c;
 

@@ -186,3 +186,36 @@ void DLR2416_SetBrightness(uint8_t percent)
     uint16_t value = (1199 * percent) / 100;
     __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, value);
 }
+
+void DLR2416_PWM_Enable(void)
+{
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+    // 1. Przywróć Alternate Function
+    GPIO_InitStruct.Pin = BL_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    GPIO_InitStruct.Alternate = GPIO_AF11_TIM3;
+
+    HAL_GPIO_Init(BL_GPIO_Port, &GPIO_InitStruct);
+
+    // 2. (opcjonalnie) upewnij się, że PWM działa
+//    HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
+}
+
+void DLR2416_PWM_Disable(GPIO_PinState state)
+{
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+    // 1. Najpierw ustaw stan (żeby nie było glitcha)
+    HAL_GPIO_WritePin(BL_GPIO_Port, BL_Pin, state);
+
+    // 2. Przełącz pin z AF na zwykły output
+    GPIO_InitStruct.Pin = BL_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+
+    HAL_GPIO_Init(BL_GPIO_Port, &GPIO_InitStruct);
+}

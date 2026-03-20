@@ -6,7 +6,7 @@
  */
 
 
-#include "sht45.h"
+#include <sht45.h>
 
 static I2C_HandleTypeDef *i2c;
 
@@ -36,6 +36,8 @@ HAL_StatusTypeDef SHT45_Init(I2C_HandleTypeDef *hi2c)
 
 HAL_StatusTypeDef SHT45_Read(float *temp, float *hum, uint32_t *id)
 {
+
+
     uint8_t cmd[1] = {0xFD}; // high precision
     uint8_t buf[6];
 
@@ -57,8 +59,24 @@ HAL_StatusTypeDef SHT45_Read(float *temp, float *hum, uint32_t *id)
     *temp = -45 + 175 * ((float)rawT / 65535.0f);
     *hum  = 100 * ((float)rawH / 65535.0f);
 
-    // fake ID (SHT45 nie daje prostego ID przez I2C)
-    *id = 0x45;
+    // ID
+
+    cmd[0] = 0x89; // ID
+
+	if (HAL_I2C_Master_Transmit(i2c, SHT45_ADDR, cmd, 1, 100) != HAL_OK)
+		return HAL_ERROR;
+
+	HAL_Delay(10);
+
+	if (HAL_I2C_Master_Receive(i2c, SHT45_ADDR, buf, 6, 100) != HAL_OK)
+		return HAL_ERROR;
+
+	// CRC check
+	if (crc8(buf, 2) != buf[2]) return HAL_ERROR;
+	if (crc8(buf + 3, 2) != buf[5]) return HAL_ERROR;
+
+	*id = (buf[0] << 24) | (buf[1] << 16) | (buf[3] << 8) | buf[4];
+
 
     return HAL_OK;
 }

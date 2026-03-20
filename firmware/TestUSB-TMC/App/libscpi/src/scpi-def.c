@@ -10,8 +10,8 @@
 #include "stm32c0xx_hal.h"
 #include <string.h>
 #include <usbtmc_app.h>
-#include <sensor.h>
 #include <display.h>
+#include <sensor.h>
 
 
 /* ===== SCPI callbacks ===== */
@@ -29,8 +29,10 @@ static scpi_result_t SCPI_SensorTemperatureQ(scpi_t *context);
 static scpi_result_t SCPI_SensorIdQ(scpi_t *context);
 static scpi_result_t SCPI_SensorHumidityQ(scpi_t *context);
 static scpi_result_t SCPI_BootloaderEnterQ(scpi_t *context);
-static scpi_result_t SCPI_SensorBrightnessQ(scpi_t *context);
-static scpi_result_t SCPI_SensorBrightness(scpi_t *context);
+static scpi_result_t SCPI_DisplayBrightnessQ(scpi_t *context);
+static scpi_result_t SCPI_DisplayBrightness(scpi_t *context);
+static scpi_result_t SCPI_DisplayStateQ(scpi_t *context);
+static scpi_result_t SCPI_DisplayState(scpi_t *context);
 
 
 /* ===== SCPI command list ===== */
@@ -58,14 +60,17 @@ static const scpi_command_t scpi_commands[] = {
 
 
 	/* Custom SCPI commands */
-	{.pattern = "SYSTem:BOOTloader:ENter", .callback = SCPI_BootloaderEnterQ,},
+	{.pattern = "SYSTem:BOOTloader:ENter", .callback = SCPI_BootloaderEnterQ,},		// Restart do trybu USB DFU {-}
 
-	{.pattern = "SENSor:TYPE?", .callback = SCPI_SensorTypeQ,},
-	{.pattern = "SENSor:TEMPerature?", .callback = SCPI_SensorTemperatureQ,},
-	{.pattern = "SENSor:ID?", .callback = SCPI_SensorIdQ,},
-	{.pattern = "SENSor:HUMidity?", .callback = SCPI_SensorHumidityQ,},
-	{.pattern = "DISPlay:BRIGhtness?", .callback = SCPI_SensorBrightnessQ,},
-	{.pattern = "DISPlay:BRIGhtness", .callback = SCPI_SensorBrightness,},
+	{.pattern = "SENSor:TYPE?", .callback = SCPI_SensorTypeQ,},						// odczyt typu czujnika ("SHT45" / "TMP117")
+	{.pattern = "SENSor:TEMPerature?", .callback = SCPI_SensorTemperatureQ,},		// odczyt zmierzonej temperatury (float)
+	{.pattern = "SENSor:ID?", .callback = SCPI_SensorIdQ,},							// odczyt ID czujnika (uint32_t)
+	{.pattern = "SENSor:HUMidity?", .callback = SCPI_SensorHumidityQ,},				// odczyt zmierzonej wilgotności (float tylko dla SHT45)
+
+	//{.pattern = "DISPlay:BRIGhtness?", .callback = SCPI_DispalyBrightnessQ,},			// Odczyt aktualnej jasności
+	{.pattern = "DISPlay:BRIGhtness", .callback = SCPI_DisplayBrightness,},			// Ustawienie jasności wyświetlacza {1-100[%]}
+	//{.pattern = "DISPlay:STATe?", .callback = SCPI_DisplayStateQ,},					// Odczyt stanu wyświetlacza
+	{.pattern = "DISPlay:STATe", .callback = SCPI_DisplayState,},					// Ustawienie stanu wyświetlacza {0,1,ON,OFF}
 
     SCPI_CMD_LIST_END
 };
@@ -198,6 +203,9 @@ static scpi_result_t SCPI_SensorHumidityQ(scpi_t *context){
 }
 
 static scpi_result_t SCPI_BootloaderEnterQ(scpi_t *context) {
+
+	DisplayOff();
+
 #define BOOT_ADDR	0x1FFF0000	// my MCU boot code base address
 #define	MCU_IRQS	48u	// no. of NVIC IRQ inputs
 
@@ -235,13 +243,13 @@ static scpi_result_t SCPI_BootloaderEnterQ(scpi_t *context) {
 	return SCPI_RES_OK;
 }
 
-static scpi_result_t SCPI_SensorBrightnessQ(scpi_t *context){
+static scpi_result_t SCPI_DisplayBrightnessQ(scpi_t *context){
 
 	return SCPI_RES_OK;
 }
-static scpi_result_t SCPI_SensorBrightness(scpi_t *context){
+static scpi_result_t SCPI_DisplayBrightness(scpi_t *context){
 	uint32_t brightness = 101;
-	SCPI_ParamUInt32(context, &brightness, 1);
+	if(!SCPI_ParamUInt32(context, &brightness, 1)) return SCPI_RES_ERR;
 
 	if((brightness <= 100) && (brightness >= 0)){
 		Display_SetBrightness((uint8_t) brightness);
@@ -249,5 +257,21 @@ static scpi_result_t SCPI_SensorBrightness(scpi_t *context){
 		return SCPI_RES_ERR;
 	}
 
+	return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_DisplayStateQ(scpi_t *context){
+	return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_DisplayState(scpi_t *context){
+	bool state = 1;
+	if (!SCPI_ParamBool(context, &state, 1)) return SCPI_RES_ERR;
+
+	if (state){
+		DisplayOn();
+	} else {
+		DisplayOff();
+	}
 	return SCPI_RES_OK;
 }

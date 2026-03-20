@@ -16,7 +16,9 @@ static uint32_t lastTick = 0;
 void Display_Init(void){
 	DLR2416_Init();
 	DLR2416_ClearAll();
-	DLR2416_SetBrightness(50);
+	DisplayOn();
+	DLR2416_SetBrightness(4);
+
 }
 
 void Display_ShowTemperature(float t)
@@ -77,4 +79,12 @@ void Display_task(void){
 
 void Display_SetBrightness(uint8_t percent){
 	DLR2416_SetBrightness(percent);
+}
+
+void DisplayOn(void){
+	DLR2416_PWM_Enable();
+}
+
+void DisplayOff(void){
+	DLR2416_PWM_Disable(GPIO_PIN_RESET);
 }

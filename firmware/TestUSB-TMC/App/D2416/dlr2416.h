@@ -24,5 +24,7 @@ void DLR2416_WriteString(uint8_t disp, const char *str);
 void DLR2416_WriteString8(const char *str);
 
 void DLR2416_SetBrightness(uint8_t percent);
+void DLR2416_PWM_Enable(void);
+void DLR2416_PWM_Disable(GPIO_PinState state);
 
 #endif /* INC_DLR2416_H_ */
