@@ -25,7 +25,7 @@ void Display_ShowTemperature(float t)
 {
     char buf[9];
 
-    char sign = '+';
+    char sign = ' ';
     if(t < 0)
     {
         sign = '-';
@@ -87,4 +87,8 @@ void DisplayOn(void){
 
 void DisplayOff(void){
 	DLR2416_PWM_Disable(GPIO_PIN_RESET);
+}
+
+void DisplayClearAll(void){
+	DLR2416_ClearAll();
 }

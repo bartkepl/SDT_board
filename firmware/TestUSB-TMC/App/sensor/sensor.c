@@ -17,7 +17,7 @@ static I2C_HandleTypeDef *sensor_i2c;
 static uint32_t lastTick = 0;
 static bool initialized = false;
 
-#define SENSOR_PERIOD_MS 100
+#define SENSOR_PERIOD_MS 999
 
 void Sensor_Init(I2C_HandleTypeDef *hi2c)
 {
@@ -27,6 +27,10 @@ void Sensor_Init(I2C_HandleTypeDef *hi2c)
     g_sensor.valid = false;
 
     initialized = false;
+}
+
+void Sensor_SHT45Heater(void){
+	SHT45_Heater();
 }
 
 static void detectSensor(void)

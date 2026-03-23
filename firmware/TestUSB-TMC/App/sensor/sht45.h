@@ -15,4 +15,6 @@
 HAL_StatusTypeDef SHT45_Init(I2C_HandleTypeDef *hi2c);
 HAL_StatusTypeDef SHT45_Read(float *temp, float *hum, uint32_t *id);
 
+HAL_StatusTypeDef SHT45_Heater(void);
+
 #endif /* SENSOR_SHT45_H_ */

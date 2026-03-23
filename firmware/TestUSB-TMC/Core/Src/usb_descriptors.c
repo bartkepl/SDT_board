@@ -205,7 +205,7 @@ char const *string_desc_arr[] =
   SCPI_IDN_MANUFACTURER,                     // 1: Manufacturer
   SCPI_IDN_MODEL,              // 2: Product
   NULL,                          // 3: Serials will use unique ID if possible
-  "USBTMC",              // 4: USBTMC
+  "TinyUSB USBTMC",              // 4: USBTMC
 };
 
 static uint16_t _desc_str[32 + 1];

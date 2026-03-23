@@ -15,5 +15,6 @@ void Display_task(void);
 void Display_SetBrightness(uint8_t percent);
 void DisplayOn(void);
 void DisplayOff(void);
+void DisplayClearAll(void);
 
 #endif /* D2416_DISPLAY_H_ */

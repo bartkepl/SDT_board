@@ -44,6 +44,7 @@ class SCPIGui:
 
         ttk.Button(conn_frame, text="Refresh", command=self.refresh_resources).grid(row=0, column=1)
         ttk.Button(conn_frame, text="Connect", command=self.connect).grid(row=0, column=2)
+        ttk.Button(conn_frame, text="Disonnect", command=self.disconnect).grid(row=0, column=3)
 
         ttk.Button(self.root, text="*IDN?", command=self.get_idn).grid(row=1, column=0, pady=5)
 
@@ -54,6 +55,7 @@ class SCPIGui:
         ttk.Button(sensor_frame, text="Temperature?", command=self.get_temperature).grid(row=0, column=1)
         ttk.Button(sensor_frame, text="Humidity?", command=self.get_humidity).grid(row=0, column=2)
         ttk.Button(sensor_frame, text="ID?", command=self.get_sensor_id).grid(row=0, column=3)
+        ttk.Button(sensor_frame, text="Heater", command=self.run_heater).grid(row=0, column=4)
 
         cycle_frame = ttk.LabelFrame(self.root, text="Cyclic Measurement")
         cycle_frame.grid(row=3, column=0, padx=10, pady=5, sticky="ew")
@@ -71,6 +73,7 @@ class SCPIGui:
         ttk.Button(cycle_frame, text="Start", command=self.start_polling).grid(row=2, column=0)
         ttk.Button(cycle_frame, text="Stop", command=self.stop_polling).grid(row=2, column=1)
         ttk.Button(cycle_frame, text="Open Plot", command=self.open_plot_window).grid(row=2, column=2)
+        ttk.Button(cycle_frame, text="Clear Plot", command=self.clear_plot_window).grid(row=2, column=3)
 
         display_frame = ttk.LabelFrame(self.root, text="Display")
         display_frame.grid(row=4, column=0, padx=10, pady=5, sticky="ew")
@@ -90,6 +93,7 @@ class SCPIGui:
         system_frame.grid(row=5, column=0, padx=10, pady=5, sticky="ew")
 
         ttk.Button(system_frame, text="Enter Bootloader", command=self.enter_bootloader).grid(row=0, column=0)
+        ttk.Button(system_frame, text="Restart", command=self.restart).grid(row=0, column=1)
 
         self.output = tk.Text(self.root, height=10, width=60)
         self.output.grid(row=6, column=0, padx=10, pady=10)
@@ -124,6 +128,12 @@ class SCPIGui:
 
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.plot_window)
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+        
+    def clear_plot_window(self):
+        self.start_time = time.time()
+        self.timestamps.clear()
+        self.values.clear()
+        self.update_plot()
 
     def update_plot(self):
         if self.plot_window is None:
@@ -154,6 +164,17 @@ class SCPIGui:
             resource = self.resource_combo.get()
             self.device = self.rm.open_resource(resource)
             self.log(f"Connected to {resource}")
+        except Exception as e:
+            messagebox.showerror("Connection Error", str(e))
+    
+    def disconnect(self):
+        if not self.device:
+            raise Exception("Not connected")
+        try:
+            device = self.device.resource_name
+            self.device.close()
+            self.device = None
+            self.log(f"Disonnected from {device}")
         except Exception as e:
             messagebox.showerror("Connection Error", str(e))
 
@@ -200,6 +221,10 @@ class SCPIGui:
             self.log(f"SENSor:ID? -> 0x{val:08X}")
         except Exception as e:
             messagebox.showerror("Error", str(e))
+            
+    def run_heater(self):
+        self.safe_query_log("SENSor:HEATer")
+
 
     def set_brightness(self):
         try:
@@ -219,6 +244,13 @@ class SCPIGui:
     def enter_bootloader(self):
         if messagebox.askyesno("Confirm", "Device will restart into bootloader"):
             self.write("SYSTem:BOOTloader:ENter")
+        self.device = None
+            
+    def restart(self):
+        if messagebox.askyesno("Confirm", "Device will restart"):
+            self.write("SYSTem:RST")
+        self.device = None
+            
 
     # --- POLLING ---
     def start_polling(self):
@@ -289,9 +321,9 @@ class SCPIGui:
                 self.device.close()
         except:
             pass
-
+        
         self.root.destroy()
-
+        quit()
 
 if __name__ == "__main__":
     root = tk.Tk()

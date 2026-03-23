@@ -28,7 +28,9 @@ static scpi_result_t SCPI_SensorTypeQ(scpi_t *context);
 static scpi_result_t SCPI_SensorTemperatureQ(scpi_t *context);
 static scpi_result_t SCPI_SensorIdQ(scpi_t *context);
 static scpi_result_t SCPI_SensorHumidityQ(scpi_t *context);
-static scpi_result_t SCPI_BootloaderEnterQ(scpi_t *context);
+static scpi_result_t SCPI_SensorHeater(scpi_t *context);
+static scpi_result_t SCPI_SystemBootloaderEnter(scpi_t *context);
+static scpi_result_t SCPI_SystemReset(scpi_t *context);
 static scpi_result_t SCPI_DisplayBrightnessQ(scpi_t *context);
 static scpi_result_t SCPI_DisplayBrightness(scpi_t *context);
 static scpi_result_t SCPI_DisplayStateQ(scpi_t *context);
@@ -60,12 +62,15 @@ static const scpi_command_t scpi_commands[] = {
 
 
 	/* Custom SCPI commands */
-	{.pattern = "SYSTem:BOOTloader:ENter", .callback = SCPI_BootloaderEnterQ,},		// Restart do trybu USB DFU {-}
+	{.pattern = "SYSTem:BOOTloader:ENter", .callback = SCPI_SystemBootloaderEnter,},		// Restart do trybu USB DFU {-}
+	{.pattern = "SYSTem:RST", .callback = SCPI_SystemReset,},								// Restart {-}
 
 	{.pattern = "SENSor:TYPE?", .callback = SCPI_SensorTypeQ,},						// odczyt typu czujnika ("SHT45" / "TMP117")
 	{.pattern = "SENSor:TEMPerature?", .callback = SCPI_SensorTemperatureQ,},		// odczyt zmierzonej temperatury (float)
 	{.pattern = "SENSor:ID?", .callback = SCPI_SensorIdQ,},							// odczyt ID czujnika (uint32_t)
 	{.pattern = "SENSor:HUMidity?", .callback = SCPI_SensorHumidityQ,},				// odczyt zmierzonej wilgotności (float tylko dla SHT45)
+	{.pattern = "SENSor:HEATer", .callback = SCPI_SensorHeater,},					// uruchomienie grzałki wbudowanej w SHT45 (tylko dla SHT45)
+
 
 	//{.pattern = "DISPlay:BRIGhtness?", .callback = SCPI_DispalyBrightnessQ,},			// Odczyt aktualnej jasności
 	{.pattern = "DISPlay:BRIGhtness", .callback = SCPI_DisplayBrightness,},			// Ustawienie jasności wyświetlacza {1-100[%]}
@@ -202,8 +207,18 @@ static scpi_result_t SCPI_SensorHumidityQ(scpi_t *context){
 	return SCPI_RES_OK;
 }
 
-static scpi_result_t SCPI_BootloaderEnterQ(scpi_t *context) {
+static scpi_result_t SCPI_SensorHeater(scpi_t *context){
+	if(g_sensor.valid != true) return SCPI_RES_ERR;
 
+	Sensor_SHT45Heater();
+
+
+	return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_SystemBootloaderEnter(scpi_t *context) {
+
+	DisplayClearAll();
 	DisplayOff();
 
 #define BOOT_ADDR	0x1FFF0000	// my MCU boot code base address
@@ -241,6 +256,11 @@ static scpi_result_t SCPI_BootloaderEnterQ(scpi_t *context) {
 	BOOTVTAB->Reset_Handler();
 
 	return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_SystemReset(scpi_t *context)
+{
+	HAL_NVIC_SystemReset();
 }
 
 static scpi_result_t SCPI_DisplayBrightnessQ(scpi_t *context){

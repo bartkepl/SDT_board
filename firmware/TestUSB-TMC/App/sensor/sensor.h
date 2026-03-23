@@ -34,4 +34,6 @@ extern SensorData_t g_sensor;
 void Sensor_Init(I2C_HandleTypeDef *hi2c);
 void Sensor_Task(void);
 
+void Sensor_SHT45Heater(void);
+
 #endif /* SENSOR_SENSOR_H_ */
