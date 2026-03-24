@@ -37,13 +37,16 @@ HAL_StatusTypeDef SHT45_Init(I2C_HandleTypeDef *hi2c)
 HAL_StatusTypeDef SHT45_Heater(void)
 {
 	uint8_t buf[6];
-	if (HAL_I2C_Master_Transmit(i2c, SHT45_ADDR, 0x2F, 1, 100) != HAL_OK)
+	uint8_t cmd = 0x2F;
+
+	if (HAL_I2C_Master_Transmit(i2c, SHT45_ADDR, &cmd, 1, 100) != HAL_OK)
         return HAL_ERROR;
 
     HAL_Delay(1100);
 
     if (HAL_I2C_Master_Receive(i2c, SHT45_ADDR, buf, 6, 100) != HAL_OK)
         return HAL_ERROR;
+    return HAL_OK;
 }
 
 HAL_StatusTypeDef SHT45_Read(float *temp, float *hum, uint32_t *id)

@@ -46,7 +46,7 @@ class SCPIGui:
         ttk.Button(conn_frame, text="Connect", command=self.connect).grid(row=0, column=2)
         ttk.Button(conn_frame, text="Disonnect", command=self.disconnect).grid(row=0, column=3)
 
-        ttk.Button(self.root, text="*IDN?", command=self.get_idn).grid(row=1, column=0, pady=5)
+        ttk.Button(self.root, text="*IDN?", command=self.get_idn, width=60).grid(row=1, column=0, pady=5)
 
         sensor_frame = ttk.LabelFrame(self.root, text="Sensor")
         sensor_frame.grid(row=2, column=0, padx=10, pady=5, sticky="ew")
@@ -83,11 +83,26 @@ class SCPIGui:
         self.brightness_entry.grid(row=0, column=1)
         self.brightness_entry.insert(0, "5")
         ttk.Button(display_frame, text="Set", command=self.set_brightness).grid(row=0, column=2)
+        ttk.Button(display_frame, text="Get", command=self.get_brightness).grid(row=0, column=3)
 
-        self.display_state = tk.StringVar(value="ON")
-        ttk.Radiobutton(display_frame, text="ON", variable=self.display_state, value="ON").grid(row=1, column=0)
-        ttk.Radiobutton(display_frame, text="OFF", variable=self.display_state, value="OFF").grid(row=1, column=1)
+        self.display_state = tk.StringVar(value="1")
+        ttk.Radiobutton(display_frame, text="ON", variable=self.display_state, value="1").grid(row=1, column=0)
+        ttk.Radiobutton(display_frame, text="OFF", variable=self.display_state, value="0").grid(row=1, column=1)
         ttk.Button(display_frame, text="Set State", command=self.set_display_state).grid(row=1, column=2)
+        ttk.Button(display_frame, text="Get State", command=self.get_display_state).grid(row=1, column=3)
+        
+        self.display_source = tk.StringVar(value="0")
+        ttk.Radiobutton(display_frame, text="Meas", variable=self.display_source, value="0").grid(row=2, column=0)
+        ttk.Radiobutton(display_frame, text="Text", variable=self.display_source, value="1").grid(row=2, column=1)
+        ttk.Button(display_frame, text="Set Source", command=self.set_display_source).grid(row=2, column=2)
+        ttk.Button(display_frame, text="Get Source", command=self.get_display_source).grid(row=2, column=3)
+        
+        ttk.Label(display_frame, text="Text:").grid(row=3, column=0)
+        self.text_entry = ttk.Entry(display_frame, width=10)
+        self.text_entry.grid(row=3, column=1)
+        self.text_entry.insert(0, "????????")
+        ttk.Button(display_frame, text="Write", command=self.write_text).grid(row=3, column=2)
+        ttk.Button(display_frame, text="Read", command=self.read_text).grid(row=3, column=3)
 
         system_frame = ttk.LabelFrame(self.root, text="System")
         system_frame.grid(row=5, column=0, padx=10, pady=5, sticky="ew")
@@ -236,11 +251,41 @@ class SCPIGui:
             return
 
         self.write(f"DISPlay:BRIGhtness {val}")
+    
+    def get_brightness(self):
+        state = ' '
+        state = self.safe_query_log("DISPlay:BRIGhtness?")
+        self.brightness_entry.delete(0,100)
+        self.brightness_entry.insert(0,state)
 
     def set_display_state(self):
         state = self.display_state.get()
         self.write(f"DISPlay:STATe {state}")
-
+    
+    def get_display_state(self):
+        state = self.safe_query_log("DISPlay:STATe?")
+        self.display_state.set(state)
+        
+    def set_display_source(self):
+        source = self.display_source.get()
+        self.write(f"DISPlay:SOURce {source}")
+            
+    def get_display_source(self):
+        source = self.safe_query_log("DISPlay:SOURce?")
+        self.display_source.set(source)
+    
+    def write_text(self):
+        text = self.text_entry.get()
+        if len(text) <= 8:
+            self.write(f"DISPlay:TEXT '{text}'")
+        else:
+            messagebox.showerror("Error"," Wprowadzony tekst za długi!")
+            
+    def read_text(self):
+        text = self.safe_query_log("DISPlay:TEXT?")
+        self.text_entry.delete(0,100)
+        self.text_entry.insert(0,text)
+            
     def enter_bootloader(self):
         if messagebox.askyesno("Confirm", "Device will restart into bootloader"):
             self.write("SYSTem:BOOTloader:ENter")

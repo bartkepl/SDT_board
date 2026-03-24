@@ -212,19 +212,19 @@ void usbtmc_app_task_iter(void) {
   case 0:
     break;
   case 1:
-    queryDelayStart = board_millis();
+    queryDelayStart = HAL_GetTick();
     queryState = 2;
     break;
   case 2:
-    if( (board_millis() - queryDelayStart) > resp_delay) {
-      queryDelayStart = board_millis();
+    if( (HAL_GetTick() - queryDelayStart) > resp_delay) {
+      queryDelayStart = HAL_GetTick();
       queryState=3;
       status |= 0x10u; // MAV
       status |= 0x40u; // SRQ
     }
     break;
   case 3:
-    if( (board_millis() - queryDelayStart) > resp_delay) {
+    if( (HAL_GetTick() - queryDelayStart) > resp_delay) {
       queryState = 4;
     }
     break;

@@ -35,6 +35,10 @@ static scpi_result_t SCPI_DisplayBrightnessQ(scpi_t *context);
 static scpi_result_t SCPI_DisplayBrightness(scpi_t *context);
 static scpi_result_t SCPI_DisplayStateQ(scpi_t *context);
 static scpi_result_t SCPI_DisplayState(scpi_t *context);
+static scpi_result_t SCPI_DisplaySource(scpi_t *context);
+static scpi_result_t SCPI_DisplaySourceQ(scpi_t *context);
+static scpi_result_t SCPI_DisplayText(scpi_t *context);
+static scpi_result_t SCPI_DisplayTextQ(scpi_t *context);
 
 
 /* ===== SCPI command list ===== */
@@ -72,10 +76,15 @@ static const scpi_command_t scpi_commands[] = {
 	{.pattern = "SENSor:HEATer", .callback = SCPI_SensorHeater,},					// uruchomienie grzałki wbudowanej w SHT45 (tylko dla SHT45)
 
 
-	//{.pattern = "DISPlay:BRIGhtness?", .callback = SCPI_DispalyBrightnessQ,},			// Odczyt aktualnej jasności
+	{.pattern = "DISPlay:BRIGhtness?", .callback = SCPI_DisplayBrightnessQ,},			// Odczyt aktualnej jasności
 	{.pattern = "DISPlay:BRIGhtness", .callback = SCPI_DisplayBrightness,},			// Ustawienie jasności wyświetlacza {1-100[%]}
-	//{.pattern = "DISPlay:STATe?", .callback = SCPI_DisplayStateQ,},					// Odczyt stanu wyświetlacza
+	{.pattern = "DISPlay:STATe?", .callback = SCPI_DisplayStateQ,},					// Odczyt stanu wyświetlacza
 	{.pattern = "DISPlay:STATe", .callback = SCPI_DisplayState,},					// Ustawienie stanu wyświetlacza {0,1,ON,OFF}
+	{.pattern = "DISPlay:SOURce", .callback = SCPI_DisplaySource,},					// Ustawienie źródła danych wyświetlacza
+	{.pattern = "DISPlay:SOURce?", .callback = SCPI_DisplaySourceQ,},					// Ustawienie źródła danych wyświetlacza
+	{.pattern = "DISPlay:TEXT", .callback = SCPI_DisplayText,},						// Ustawienie textu na wyświetlacz
+	{.pattern = "DISPlay:TEXT?", .callback = SCPI_DisplayTextQ,},						// Odczytanie textu na wyświetlaczu
+
 
     SCPI_CMD_LIST_END
 };
@@ -261,18 +270,19 @@ static scpi_result_t SCPI_SystemBootloaderEnter(scpi_t *context) {
 static scpi_result_t SCPI_SystemReset(scpi_t *context)
 {
 	HAL_NVIC_SystemReset();
+	return SCPI_RES_OK;
 }
 
 static scpi_result_t SCPI_DisplayBrightnessQ(scpi_t *context){
-
+	SCPI_ResultInt32(context, Display_GetBrightness());
 	return SCPI_RES_OK;
 }
 static scpi_result_t SCPI_DisplayBrightness(scpi_t *context){
 	uint32_t brightness = 101;
 	if(!SCPI_ParamUInt32(context, &brightness, 1)) return SCPI_RES_ERR;
 
-	if((brightness <= 100) && (brightness >= 0)){
-		Display_SetBrightness((uint8_t) brightness);
+	if (brightness <= 100){
+		Display_SetBrightness(brightness);
 	} else {
 		return SCPI_RES_ERR;
 	}
@@ -281,6 +291,7 @@ static scpi_result_t SCPI_DisplayBrightness(scpi_t *context){
 }
 
 static scpi_result_t SCPI_DisplayStateQ(scpi_t *context){
+	SCPI_ResultInt32(context, Display_GetState());
 	return SCPI_RES_OK;
 }
 
@@ -288,10 +299,52 @@ static scpi_result_t SCPI_DisplayState(scpi_t *context){
 	bool state = 1;
 	if (!SCPI_ParamBool(context, &state, 1)) return SCPI_RES_ERR;
 
-	if (state){
-		DisplayOn();
-	} else {
-		DisplayOff();
-	}
+	Display_SetState(state);
 	return SCPI_RES_OK;
 }
+
+static scpi_result_t SCPI_DisplaySource(scpi_t *context)
+{
+	uint32_t source = 0;
+	if (!SCPI_ParamUInt32(context, &source, 1)) return SCPI_RES_ERR;
+
+	if (source >= eDisplaySource_SIZE) return SCPI_RES_ERR;
+
+	Display_SelectSource((DisplaySource_t)source);
+	return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_DisplaySourceQ(scpi_t *context)
+{
+	SCPI_ResultInt32(context, Display_GetSource());
+	return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_DisplayText(scpi_t *context)
+{
+    const char *ptr;
+    size_t len;
+
+    if (!SCPI_ParamCharacters(context, &ptr, &len, TRUE))
+        return SCPI_RES_ERR;
+
+    char buf[8];
+
+    memset(buf, ' ', 8);
+    memcpy(buf, ptr, len > 8 ? 8 : len);
+
+    Display_SetText(buf);
+
+    return SCPI_RES_OK;
+}
+
+
+static scpi_result_t SCPI_DisplayTextQ(scpi_t *context)
+{
+
+    SCPI_ResultCharacters(context, Display_GetText(), 8);
+
+    return SCPI_RES_OK;
+}
+
+

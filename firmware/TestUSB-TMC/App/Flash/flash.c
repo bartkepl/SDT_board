@@ -2,7 +2,7 @@
  * flash.c
  *
  *  Created on: 20 mar 2026
- *      Author: bniemiec
+ *      Author: bartkepl
  */
 
 #include "flash.h"

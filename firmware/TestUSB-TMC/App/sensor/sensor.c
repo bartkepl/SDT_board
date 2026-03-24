@@ -9,15 +9,17 @@
 #include <sensor.h>
 #include <sht45.h>
 #include <tmp117.h>
+#include <display.h>
+#include <Utils.h>
 
 SensorData_t g_sensor;
 
 static I2C_HandleTypeDef *sensor_i2c;
 
-static uint32_t lastTick = 0;
+static uint16_t sTaskSensorTimer = 0;
 static bool initialized = false;
 
-#define SENSOR_PERIOD_MS 999
+#define SENSOR_PERIOD_MS 1000
 
 void Sensor_Init(I2C_HandleTypeDef *hi2c)
 {
@@ -56,10 +58,8 @@ static void detectSensor(void)
 
 void Sensor_Task(void)
 {
-    if (HAL_GetTick() - lastTick < SENSOR_PERIOD_MS)
+    if (!SysTimTestTimer1ms_u16(&sTaskSensorTimer, SENSOR_PERIOD_MS))
         return;
-
-    lastTick = HAL_GetTick();
 
     if (!initialized)
     {
@@ -111,5 +111,11 @@ void Sensor_Task(void)
         default:
             g_sensor.valid = false;
             break;
+    }
+
+    if(g_sensor.valid){
+    	char buf[8];
+    	ConvertFloatTempToChar(g_sensor.temperature, buf);
+    	Display_SetMeasurement(buf);
     }
 }

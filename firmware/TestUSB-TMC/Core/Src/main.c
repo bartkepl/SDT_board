@@ -111,14 +111,10 @@ int main(void)
   /* USER CODE BEGIN 2 */
  // AppInit();
   HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
-  HAL_Delay(100);
   Sensor_Init(&hi2c1);
-  HAL_Delay(100);
   tud_init(BOARD_TUD_RHPORT);
   SCPI_Main_Init();
-  HAL_Delay(100);
   Display_Init();
-  HAL_Delay(100);
   HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
 
   /* USER CODE END 2 */
