@@ -7,8 +7,14 @@
 
 
 #include <sht45.h>
+#include <Utils.h>
 
 static I2C_HandleTypeDef *i2c;
+
+SensorSht45Data_t xSensorSht45Data = {};
+uint16_t sSht45TaskTimer = 0;
+uint16_t sSht45SenseTimer = 0;
+Sht45SensorState_t eSht45SensorState =0;
 
 static uint8_t crc8(uint8_t *data, int len)
 {
@@ -30,6 +36,7 @@ static uint8_t crc8(uint8_t *data, int len)
 
 HAL_StatusTypeDef SHT45_Init(I2C_HandleTypeDef *hi2c)
 {
+	//xSensorSht45Data.eMeasPrec = ePrecMeas_High;
     i2c = hi2c;
     return HAL_OK;
 }
@@ -94,4 +101,42 @@ HAL_StatusTypeDef SHT45_Read(float *temp, float *hum, uint32_t *id)
 
 
     return HAL_OK;
+}
+
+
+void SHT45_Task(void){
+	if(!SysTimTestTimer1ms_u16(&sSht45TaskTimer, 10)) return;
+
+	switch(eSht45SensorState)
+	{
+	case eSht45SensorState_Init:
+		eSht45SensorState = eSht45SensorState_Wait;
+		break;
+	case eSht45SensorState_Wait:
+		if (sSht45SenseTimer) {
+			eSht45SensorState = eSht45SensorState_RequestMeas;
+			break;
+		}
+		if (xSensorSht45Data.cHeaterActivationFlag) {
+			eSht45SensorState = eSht45SensorState_RequestHeater;
+			break;
+		}
+		if (xSensorSht45Data.cSoftResetFlag) {
+			eSht45SensorState = eSht45SensorState_RequestSoftReset;
+			break;
+		}
+		break;
+	case eSht45SensorState_RequestSoftReset:
+		if (HAL_I2C_Master_Transmit(i2c, SHT45_ADDR, 0x94, 1, 100) != HAL_OK){
+			eSht45SensorState = eeSht45SensorState_Error;
+		}
+		SysTimZeroTimer1ms_u16(&sSht45TaskTimer);
+		eSht45SensorState = eSht45SensorState_Init;
+		break;
+	case eSht45SensorState_RequestMeas:
+	case eSht45SensorState_RequestHeater:
+		break;
+	default:
+		Error_Handler();
+	}
 }

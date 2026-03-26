@@ -12,23 +12,26 @@
 #include <display.h>
 #include <Utils.h>
 
-SensorData_t g_sensor;
+SensorData_t g_sensor ={0};
 
 static I2C_HandleTypeDef *sensor_i2c;
 
 static uint16_t sTaskSensorTimer = 0;
-static bool initialized = false;
 
 #define SENSOR_PERIOD_MS 1000
+
+
+//------------------------------------------------------------------//
+
 
 void Sensor_Init(I2C_HandleTypeDef *hi2c)
 {
     sensor_i2c = hi2c;
 
     g_sensor.type = SENSOR_NONE;
-    g_sensor.valid = false;
+    g_sensor.ucValidFlag = false;
 
-    initialized = false;
+    g_sensor.ucInitializedFlag = false;
 }
 
 void Sensor_SHT45Heater(void){
@@ -37,21 +40,23 @@ void Sensor_SHT45Heater(void){
 
 static void detectSensor(void)
 {
-    // TMP117 address = 0x48 << 1
-    if (HAL_I2C_IsDeviceReady(sensor_i2c, TMP117_ADDR, 2, 50) == HAL_OK)
-    {
-        g_sensor.type = SENSOR_TMP117;
-        TMP117_Init(sensor_i2c);
-        return;
-    }
+	// TMP117 address = 0x48 << 1
+	if (HAL_I2C_IsDeviceReady(sensor_i2c, TMP117_ADDR, 2, 50) == HAL_OK) {
+		g_sensor.type = SENSOR_TMP117;
+		TMP117_Init(sensor_i2c);
+		return;
+	}
 
-    // SHT45 address = 0x44 << 1
-    if (HAL_I2C_IsDeviceReady(sensor_i2c, SHT45_ADDR, 2, 50) == HAL_OK)
-    {
-        g_sensor.type = SENSOR_SHT45;
-        SHT45_Init(sensor_i2c);
-        return;
-    }
+	// SHT45 address = 0x44 << 1
+	if (HAL_I2C_IsDeviceReady(sensor_i2c, SHT45_ADDR, 2, 50) == HAL_OK) {
+		if (g_sensor.type == SENSOR_NONE) {
+			g_sensor.type = SENSOR_SHT45;
+			SHT45_Init(sensor_i2c);
+		} else {
+			g_sensor.type = SENSOR_ERROR;
+		}
+		return;
+	}
 
     g_sensor.type = SENSOR_NONE;
 }
@@ -61,10 +66,10 @@ void Sensor_Task(void)
     if (!SysTimTestTimer1ms_u16(&sTaskSensorTimer, SENSOR_PERIOD_MS))
         return;
 
-    if (!initialized)
+    if (!g_sensor.ucInitializedFlag)
     {
         detectSensor();
-        initialized = true;
+        g_sensor.ucInitializedFlag = true;
         return;
     }
 
@@ -77,14 +82,14 @@ void Sensor_Task(void)
 
             if (TMP117_Read(&temp, &id) == HAL_OK)
             {
-                g_sensor.temperature = temp;
-                g_sensor.id = id;
-                g_sensor.humidity = 0;
-                g_sensor.valid = true;
+                g_sensor.fTemp = temp;
+                g_sensor.usSensorId = id;
+                g_sensor.fHum = 0;
+                g_sensor.ucValidFlag = true;
             }
             else
             {
-                g_sensor.valid = false;
+                g_sensor.ucValidFlag = false;
             }
         }
         break;
@@ -96,26 +101,26 @@ void Sensor_Task(void)
 
             if (SHT45_Read(&temp, &hum, &id) == HAL_OK)
             {
-                g_sensor.temperature = temp;
-                g_sensor.humidity = hum;
-                g_sensor.id = (uint16_t)(id & 0xFFFF);
-                g_sensor.valid = true;
+                g_sensor.fTemp = temp;
+                g_sensor.fHum = hum;
+                g_sensor.usSensorId = (uint16_t)(id & 0xFFFF);
+                g_sensor.ucValidFlag = true;
             }
             else
             {
-                g_sensor.valid = false;
+                g_sensor.ucValidFlag = false;
             }
         }
         break;
 
         default:
-            g_sensor.valid = false;
+            g_sensor.ucValidFlag = false;
             break;
     }
 
-    if(g_sensor.valid){
+    if(g_sensor.ucValidFlag){
     	char buf[8];
-    	ConvertFloatTempToChar(g_sensor.temperature, buf);
+    	ConvertFloatTempToChar(g_sensor.fTemp, buf);
     	Display_SetMeasurement(buf);
     }
 }

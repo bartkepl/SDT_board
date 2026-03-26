@@ -225,7 +225,7 @@ uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
     case STRID_SERIAL:
     {
       const char *model = SCPI_IDN_MODEL;
-      const char *serial = SCPI_IDN_SERIAL;
+      const char *serial = serial_get();
 
       char serial_str[64];
 

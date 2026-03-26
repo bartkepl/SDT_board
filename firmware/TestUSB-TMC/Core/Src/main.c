@@ -110,6 +110,7 @@ int main(void)
   MX_CRC_Init();
   /* USER CODE BEGIN 2 */
  // AppInit();
+
   HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
   Sensor_Init(&hi2c1);
   tud_init(BOARD_TUD_RHPORT);

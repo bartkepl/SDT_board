@@ -109,6 +109,11 @@ class SCPIGui:
 
         ttk.Button(system_frame, text="Enter Bootloader", command=self.enter_bootloader).grid(row=0, column=0)
         ttk.Button(system_frame, text="Restart", command=self.restart).grid(row=0, column=1)
+        
+        self.id_type = tk.StringVar(value="SHORT")
+        ttk.Radiobutton(system_frame, text="Short", variable=self.id_type, value="SHORT").grid(row=1, column=0)
+        ttk.Radiobutton(system_frame, text="Long", variable=self.id_type, value="LONG").grid(row=1, column=1)
+        ttk.Button(system_frame, text="Get ID", command=self.get_device_ID).grid(row=1, column=2)
 
         self.output = tk.Text(self.root, height=10, width=60)
         self.output.grid(row=6, column=0, padx=10, pady=10)
@@ -295,6 +300,10 @@ class SCPIGui:
         if messagebox.askyesno("Confirm", "Device will restart"):
             self.write("SYSTem:RST")
         self.device = None
+        
+    def get_device_ID(self):
+        devIDtype = self.id_type.get()
+        devID = self.safe_query_log(f"SYSTem:ID? {devIDtype}")
             
 
     # --- POLLING ---
