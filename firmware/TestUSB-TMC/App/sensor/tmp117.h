@@ -23,11 +23,17 @@
 typedef enum {
     TMP117_STATE_IDLE = 0,
     TMP117_STATE_REQ_TEMP,
+    TMP117_STATE_WAIT_TX_TEMP,
     TMP117_STATE_REC_TEMP,
+    TMP117_STATE_WAIT_RX_TEMP,
     TMP117_STATE_REQ_ID,
+    TMP117_STATE_WAIT_TX_ID,
     TMP117_STATE_REC_ID,
+    TMP117_STATE_WAIT_RX_ID,
     TMP117_STATE_REQ_CONFIG,
+    TMP117_STATE_WAIT_TX_CONFIG,
     TMP117_STATE_REC_CONFIG,
+    TMP117_STATE_WAIT_RX_CONFIG,
     TMP117_STATE_ERROR,
 } TMP117_State_t;
 
@@ -45,7 +51,8 @@ extern TMP117_Data_t g_tmp117;
 
 void TMP117_Init(I2C_HandleTypeDef *hi2c);
 void TMP117_Task(void);
-void TMP117_I2C_Complete_Callback(void);
+void TMP117_I2C_TxComplete_Callback(void);
+void TMP117_I2C_RxComplete_Callback(void);
 void TMP117_I2C_Error_Callback(void);
 
 #endif /* SENSOR_TMP117_H_ */

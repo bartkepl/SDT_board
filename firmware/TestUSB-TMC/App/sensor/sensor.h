@@ -45,7 +45,8 @@ void Sensor_Init(I2C_HandleTypeDef *hi2c);
 void Sensor_Task(void);
 
 // I2C callback functions (to be called from HAL I2C complete/error callbacks)
-void Sensor_I2C_Complete_Callback(void);
+void Sensor_I2C_TxComplete_Callback(void);
+void Sensor_I2C_RxComplete_Callback(void);
 void Sensor_I2C_Error_Callback(void);
 
 // SHT45 specific functions

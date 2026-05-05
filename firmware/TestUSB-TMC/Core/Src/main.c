@@ -448,10 +448,10 @@ static void MX_GPIO_Init(void)
  */
 void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *hi2c)
 {
-    // Route to Sensor I2C complete handler
+    // Route to Sensor I2C TX complete handler
     if (hi2c->Instance == I2C1)
     {
-        Sensor_I2C_Complete_Callback();
+        Sensor_I2C_TxComplete_Callback();
     }
 }
 
@@ -462,10 +462,10 @@ void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *hi2c)
  */
 void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c)
 {
-    // Route to Sensor I2C complete handler
+    // Route to Sensor I2C RX complete handler
     if (hi2c->Instance == I2C1)
     {
-        Sensor_I2C_Complete_Callback();
+        Sensor_I2C_RxComplete_Callback();
     }
 }
 

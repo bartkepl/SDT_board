@@ -14,6 +14,9 @@ static TMP117_State_t eTmp117State = TMP117_STATE_IDLE;
 static uint8_t ucTmp117RxBuffer[2];
 static uint8_t ucTmp117TxBuffer[1];
 static uint16_t usTmp117TaskWaitTimer = 0;
+static volatile uint8_t ucTmp117TxComplete = 0;
+static volatile uint8_t ucTmp117RxComplete = 0;
+static volatile uint8_t ucTmp117Error = 0;
 
 // State machine update timer (10ms)
 #define TMP117_TASK_PERIOD_MS 10
@@ -28,6 +31,9 @@ TMP117_Data_t g_tmp117 = {0};
 static void TMP117_RequestRead(uint8_t ucRegister)
 {
     ucTmp117TxBuffer[0] = ucRegister;
+    ucTmp117TxComplete = 0;
+    ucTmp117RxComplete = 0;
+    ucTmp117Error = 0;
     
     if (HAL_I2C_Master_Transmit_DMA(i2c, TMP117_ADDR, ucTmp117TxBuffer, 1) != HAL_OK)
     {
@@ -37,6 +43,10 @@ static void TMP117_RequestRead(uint8_t ucRegister)
 
 static void TMP117_RequestReadData(void)
 {
+    ucTmp117TxComplete = 0;
+    ucTmp117RxComplete = 0;
+    ucTmp117Error = 0;
+    
     if (HAL_I2C_Master_Receive_DMA(i2c, TMP117_ADDR, ucTmp117RxBuffer, 2) != HAL_OK)
     {
         eTmp117State = TMP117_STATE_ERROR;
@@ -47,6 +57,7 @@ static void TMP117_ProcessTemp(void)
 {
     int16_t raw = ((int16_t)ucTmp117RxBuffer[0] << 8) | ucTmp117RxBuffer[1];
     g_tmp117.fTemp = raw * 0.0078125f;
+    g_tmp117.ucValidFlag = 1;
     g_tmp117.ucNewDataFlag = 1;
 }
 
@@ -75,7 +86,12 @@ void TMP117_Init(I2C_HandleTypeDef *hi2c)
     g_tmp117.usId = 0;
     g_tmp117.usConfigRegister = 0;
     
-    eTmp117State = TMP117_STATE_REQ_TEMP;
+    ucTmp117TxComplete = 0;
+    ucTmp117RxComplete = 0;
+    ucTmp117Error = 0;
+    
+    eTmp117State = TMP117_STATE_IDLE;
+    SysTimZeroTimer1ms_u16(&sTmp117TaskTimer);
     SysTimZeroTimer1ms_u16(&usTmp117TaskWaitTimer);
 }
 
@@ -105,46 +121,145 @@ void TMP117_Task(void)
         case TMP117_STATE_REQ_TEMP:
             // Request temperature register
             TMP117_RequestRead(TMP117_REG_TEMP);
-            eTmp117State = TMP117_STATE_REC_TEMP;
-            usTmp117TaskWaitTimer = 2; // Wait ~20ms for I2C
+            eTmp117State = TMP117_STATE_WAIT_TX_TEMP;
             break;
+
+        case TMP117_STATE_WAIT_TX_TEMP:
+        {
+            volatile uint8_t tx_complete = ucTmp117TxComplete;
+            volatile uint8_t error = ucTmp117Error;
+            
+            if (tx_complete)
+            {
+                ucTmp117TxComplete = 0;  // Reset flag
+                eTmp117State = TMP117_STATE_REC_TEMP;
+                usTmp117TaskWaitTimer = 2; // Wait ~20ms for I2C
+            }
+            else if (error)
+            {
+                eTmp117State = TMP117_STATE_ERROR;
+            }
+            break;
+        }
 
         case TMP117_STATE_REC_TEMP:
             // Read temperature data (handled by DMA + callback)
             TMP117_RequestReadData();
-            eTmp117State = TMP117_STATE_REQ_ID;
-            usTmp117TaskWaitTimer = 2;
+            eTmp117State = TMP117_STATE_WAIT_RX_TEMP;
             break;
+
+        case TMP117_STATE_WAIT_RX_TEMP:
+        {
+            volatile uint8_t rx_complete = ucTmp117RxComplete;
+            volatile uint8_t error = ucTmp117Error;
+            
+            if (rx_complete)
+            {
+                ucTmp117RxComplete = 0;  // Reset flag
+                eTmp117State = TMP117_STATE_REQ_ID;
+            }
+            else if (error)
+            {
+                eTmp117State = TMP117_STATE_ERROR;
+            }
+            break;
+        }
 
         case TMP117_STATE_REQ_ID:
             // Process temperature and request ID
             TMP117_ProcessTemp();
             TMP117_RequestRead(TMP117_REG_ID);
-            eTmp117State = TMP117_STATE_REC_ID;
-            usTmp117TaskWaitTimer = 2;
+            eTmp117State = TMP117_STATE_WAIT_TX_ID;
             break;
+
+        case TMP117_STATE_WAIT_TX_ID:
+        {
+            volatile uint8_t tx_complete = ucTmp117TxComplete;
+            volatile uint8_t error = ucTmp117Error;
+            
+            if (tx_complete)
+            {
+                ucTmp117TxComplete = 0;  // Reset flag
+                eTmp117State = TMP117_STATE_REC_ID;
+                usTmp117TaskWaitTimer = 2;
+            }
+            else if (error)
+            {
+                eTmp117State = TMP117_STATE_ERROR;
+            }
+            break;
+        }
 
         case TMP117_STATE_REC_ID:
             // Read ID data
             TMP117_RequestReadData();
-            eTmp117State = TMP117_STATE_REQ_CONFIG;
-            usTmp117TaskWaitTimer = 2;
+            eTmp117State = TMP117_STATE_WAIT_RX_ID;
             break;
+
+        case TMP117_STATE_WAIT_RX_ID:
+        {
+            volatile uint8_t rx_complete = ucTmp117RxComplete;
+            volatile uint8_t error = ucTmp117Error;
+            
+            if (rx_complete)
+            {
+                ucTmp117RxComplete = 0;  // Reset flag
+                eTmp117State = TMP117_STATE_REQ_CONFIG;
+            }
+            else if (error)
+            {
+                eTmp117State = TMP117_STATE_ERROR;
+            }
+            break;
+        }
 
         case TMP117_STATE_REQ_CONFIG:
             // Process ID and request config
             TMP117_ProcessId();
             TMP117_RequestRead(TMP117_REG_CONFIG);
-            eTmp117State = TMP117_STATE_REC_CONFIG;
-            usTmp117TaskWaitTimer = 2;
+            eTmp117State = TMP117_STATE_WAIT_TX_CONFIG;
             break;
+
+        case TMP117_STATE_WAIT_TX_CONFIG:
+        {
+            volatile uint8_t tx_complete = ucTmp117TxComplete;
+            volatile uint8_t error = ucTmp117Error;
+            
+            if (tx_complete)
+            {
+                ucTmp117TxComplete = 0;  // Reset flag
+                eTmp117State = TMP117_STATE_REC_CONFIG;
+                usTmp117TaskWaitTimer = 2;
+            }
+            else if (error)
+            {
+                eTmp117State = TMP117_STATE_ERROR;
+            }
+            break;
+        }
 
         case TMP117_STATE_REC_CONFIG:
             // Read config data
             TMP117_RequestReadData();
-            eTmp117State = TMP117_STATE_IDLE;
-            usTmp117TaskWaitTimer = 2;
+            eTmp117State = TMP117_STATE_WAIT_RX_CONFIG;
             break;
+
+        case TMP117_STATE_WAIT_RX_CONFIG:
+        {
+            volatile uint8_t rx_complete = ucTmp117RxComplete;
+            volatile uint8_t error = ucTmp117Error;
+            
+            if (rx_complete)
+            {
+                ucTmp117RxComplete = 0;  // Reset flag
+                eTmp117State = TMP117_STATE_IDLE;
+            }
+            else if (error)
+            {
+                eTmp117State = TMP117_STATE_ERROR;
+            }
+            break;
+        }
 
         case TMP117_STATE_ERROR:
             // Error state - reset after a while
@@ -158,8 +273,15 @@ void TMP117_Task(void)
     }
 }
 
-void TMP117_I2C_Complete_Callback(void)
+void TMP117_I2C_TxComplete_Callback(void)
 {
+    ucTmp117TxComplete = 1;
+}
+
+void TMP117_I2C_RxComplete_Callback(void)
+{
+    ucTmp117RxComplete = 1;
+    
     // Process received data based on current state
     if (eTmp117State == TMP117_STATE_REC_TEMP)
     {
@@ -178,5 +300,6 @@ void TMP117_I2C_Complete_Callback(void)
 
 void TMP117_I2C_Error_Callback(void)
 {
+    ucTmp117Error = 1;
     eTmp117State = TMP117_STATE_ERROR;
 }

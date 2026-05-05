@@ -190,18 +190,37 @@ void Sensor_Task(void)
     }
 }
 
-void Sensor_I2C_Complete_Callback(void)
+void Sensor_I2C_TxComplete_Callback(void)
 {
     // Route callback to appropriate sensor
     switch (g_sensor.type)
     {
         case SENSOR_TMP117:
-            TMP117_I2C_Complete_Callback();
+        	TMP117_I2C_TxComplete_Callback();
             break;
             
         case SENSOR_SHT45:
         case SENSOR_DUAL:
-            SHT45_I2C_Complete_Callback();
+            SHT45_I2C_TxComplete_Callback();
+            break;
+            
+        default:
+            break;
+    }
+}
+
+void Sensor_I2C_RxComplete_Callback(void)
+{
+    // Route callback to appropriate sensor
+    switch (g_sensor.type)
+    {
+        case SENSOR_TMP117:
+        	TMP117_I2C_RxComplete_Callback();
+            break;
+            
+        case SENSOR_SHT45:
+        case SENSOR_DUAL:
+            SHT45_I2C_RxComplete_Callback();
             break;
             
         default:
