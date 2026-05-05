@@ -5,16 +5,25 @@
  *      Author: bartkepl
  */
 
-
 #include <sht45.h>
 #include <Utils.h>
 
 static I2C_HandleTypeDef *i2c;
+static uint16_t sSht45TaskTimer = 0;
+static SHT45_State_t eSht45State = SHT45_STATE_IDLE;
+static uint16_t usSht45WaitTimer = 0;
+static uint8_t ucSht45RxBuffer[6];
+static uint8_t ucSht45TxBuffer[1];
 
-SensorSht45Data_t xSensorSht45Data = {};
-uint16_t sSht45TaskTimer = 0;
-uint16_t sSht45SenseTimer = 0;
-Sht45SensorState_t eSht45SensorState =0;
+// State machine timer period (10ms)
+#define SHT45_TASK_PERIOD_MS 10
+#define SHT45_READ_PERIOD_MS 1000
+
+SHT45_Data_t g_sht45 = {0};
+
+//------------------------------------------------------------------//
+// Private functions
+//------------------------------------------------------------------//
 
 static uint8_t crc8(uint8_t *data, int len)
 {
@@ -34,109 +43,241 @@ static uint8_t crc8(uint8_t *data, int len)
     return crc;
 }
 
-HAL_StatusTypeDef SHT45_Init(I2C_HandleTypeDef *hi2c)
+static void SHT45_SendCommand(uint8_t cmd)
 {
-	//xSensorSht45Data.eMeasPrec = ePrecMeas_High;
-    i2c = hi2c;
-    return HAL_OK;
-}
-
-HAL_StatusTypeDef SHT45_Heater(void)
-{
-	uint8_t buf[6];
-	uint8_t cmd = 0x2F;
-
-	if (HAL_I2C_Master_Transmit(i2c, SHT45_ADDR, &cmd, 1, 100) != HAL_OK)
-        return HAL_ERROR;
-
-    HAL_Delay(1100);
-
-    if (HAL_I2C_Master_Receive(i2c, SHT45_ADDR, buf, 6, 100) != HAL_OK)
-        return HAL_ERROR;
-    return HAL_OK;
-}
-
-HAL_StatusTypeDef SHT45_Read(float *temp, float *hum, uint32_t *id)
-{
-
-
-    uint8_t cmd[1] = {0xFD}; // high precision
-    uint8_t buf[6];
-
-    if (HAL_I2C_Master_Transmit(i2c, SHT45_ADDR, cmd, 1, 100) != HAL_OK)
-        return HAL_ERROR;
-
-    HAL_Delay(10);
-
-    if (HAL_I2C_Master_Receive(i2c, SHT45_ADDR, buf, 6, 100) != HAL_OK)
-        return HAL_ERROR;
-
-    // CRC check
-    if (crc8(buf, 2) != buf[2]) return HAL_ERROR;
-    if (crc8(buf+3, 2) != buf[5]) return HAL_ERROR;
-
-    uint16_t rawT = (buf[0] << 8) | buf[1];
-    uint16_t rawH = (buf[3] << 8) | buf[4];
-
-    *temp = -45 + 175 * ((float)rawT / 65535.0f);
-    *hum  = 100 * ((float)rawH / 65535.0f);
-
-    // ID
-
-    cmd[0] = 0x89; // ID
-
-	if (HAL_I2C_Master_Transmit(i2c, SHT45_ADDR, cmd, 1, 100) != HAL_OK)
-		return HAL_ERROR;
-
-	HAL_Delay(10);
-
-	if (HAL_I2C_Master_Receive(i2c, SHT45_ADDR, buf, 6, 100) != HAL_OK)
-		return HAL_ERROR;
-
-	// CRC check
-	if (crc8(buf, 2) != buf[2]) return HAL_ERROR;
-	if (crc8(buf + 3, 2) != buf[5]) return HAL_ERROR;
-
-	*id = (buf[0] << 24) | (buf[1] << 16) | (buf[3] << 8) | buf[4];
-
-
-    return HAL_OK;
-}
-
-
-void SHT45_Task(void){
-	if(!SysTimTestTimer1ms_u16(&sSht45TaskTimer, 10)) return;
-
-	switch(eSht45SensorState)
-	{
-	case eSht45SensorState_Init:
-		eSht45SensorState = eSht45SensorState_Wait;
-		break;
-	case eSht45SensorState_Wait:
-		if (sSht45SenseTimer) {
-			eSht45SensorState = eSht45SensorState_RequestMeas;
-			break;
-		}
-		if (xSensorSht45Data.cHeaterActivationFlag) {
-			eSht45SensorState = eSht45SensorState_RequestHeater;
-			break;
-		}
-		if (xSensorSht45Data.cSoftResetFlag) {
-			eSht45SensorState = eSht45SensorState_RequestSoftReset;
-			break;
-		}
-		break;
-	case eSht45SensorState_RequestSoftReset:
-		if (HAL_I2C_Master_Transmit(i2c, SHT45_ADDR, 0x94, 1, 100) != HAL_OK){
-			eSht45SensorState = eeSht45SensorState_Error;
-		}
-		SysTimZeroTimer1ms_u16(&sSht45TaskTimer);
-		eSht45SensorState = eSht45SensorState_Init;
-		break;
-	case eSht45SensorState_RequestMeas:
-	case eSht45SensorState_RequestHeater:
-		break;
-	default:
-		Error_Handler();
+    ucSht45TxBuffer[0] = cmd;
+    
+//    if (HAL_I2C_Master_Transmit_DMA(i2c, SHT45_ADDR, ucSht45TxBuffer, 1)!= HAL_OK) {
+//		eSht45State = SHT45_STATE_ERROR;
+//	}
+	if (HAL_I2C_Master_Transmit(i2c, SHT45_ADDR, ucSht45TxBuffer, 1, HAL_TIMEOUT)!= HAL_OK) {
+		eSht45State = SHT45_STATE_ERROR;
 	}
+}
+
+static void SHT45_ReceiveData(uint8_t ucLen)
+{
+//    if (HAL_I2C_Master_Receive_DMA(i2c, SHT45_ADDR, ucSht45RxBuffer, ucLen,) != HAL_OK)
+//    {
+//        eSht45State = SHT45_STATE_ERROR;
+//    }
+	if (HAL_I2C_Master_Receive(i2c, SHT45_ADDR, ucSht45RxBuffer, ucLen, HAL_TIMEOUT) != HAL_OK) {
+		eSht45State = SHT45_STATE_ERROR;
+	}
+}
+
+static void SHT45_ProcessMeasure(void)
+{
+    // Check CRC for temperature
+    if (crc8(ucSht45RxBuffer, 2) != ucSht45RxBuffer[2])
+    {
+        g_sht45.ucValidFlag = 0;
+        return;
+    }
+    
+    // Check CRC for humidity
+    if (crc8(ucSht45RxBuffer + 3, 2) != ucSht45RxBuffer[5])
+    {
+        g_sht45.ucValidFlag = 0;
+        return;
+    }
+
+    uint16_t rawT = (ucSht45RxBuffer[0] << 8) | ucSht45RxBuffer[1];
+    uint16_t rawH = (ucSht45RxBuffer[3] << 8) | ucSht45RxBuffer[4];
+
+    g_sht45.fTemp = -45.0f + 175.0f * ((float)rawT / 65535.0f);
+    g_sht45.fHum = -6.0f + 125.0f * ((float)rawH / 65535.0f);
+    
+    g_sht45.ucNewDataFlag = 1;
+}
+
+static void SHT45_ProcessSerial(void)
+{
+    // Check CRC
+    if (crc8(ucSht45RxBuffer, 2) != ucSht45RxBuffer[2])
+        return;
+    if (crc8(ucSht45RxBuffer + 3, 2) != ucSht45RxBuffer[5])
+        return;
+
+    g_sht45.uSerialNumber = (ucSht45RxBuffer[0] << 24) | (ucSht45RxBuffer[1] << 16) | 
+                            (ucSht45RxBuffer[3] << 8) | ucSht45RxBuffer[4];
+    
+    g_sht45.ucValidFlag = 1;
+}
+
+//------------------------------------------------------------------//
+// Public functions
+//------------------------------------------------------------------//
+
+void SHT45_Init(I2C_HandleTypeDef *hi2c)
+{
+    i2c = hi2c;
+    
+    g_sht45.ucValidFlag = 0;
+    g_sht45.ucNewDataFlag = 0;
+    g_sht45.ucInitializedFlag = 1;
+    g_sht45.fTemp = 0;
+    g_sht45.fHum = 0;
+    g_sht45.uSerialNumber = 0;
+    g_sht45.eMeasPrecision = SHT45_PRECISION_HIGH;
+    g_sht45.eHeaterMode = SHT45_HEATER_20MW_1S;
+    
+    eSht45State = SHT45_STATE_REQ_MEASURE;
+    SysTimZeroTimer1ms_u16(&usSht45WaitTimer);
+}
+
+void SHT45_Task(void)
+{
+    // State machine runs every 10ms
+    if (!SysTimTestTimer1ms_u16(&sSht45TaskTimer, SHT45_TASK_PERIOD_MS))
+        return;
+
+    // Wait timer logic
+    if (usSht45WaitTimer > 0)
+    {
+        usSht45WaitTimer--;
+        return;
+    }
+
+    switch (eSht45State)
+    {
+        case SHT45_STATE_IDLE:
+            // Periodic measurement every 1000ms
+            if (SysTimTestTimer1ms_u16(&sSht45TaskTimer, SHT45_READ_PERIOD_MS))
+            {
+                eSht45State = SHT45_STATE_REQ_MEASURE;
+            }
+            break;
+
+        case SHT45_STATE_REQ_MEASURE:
+            // Request measurement
+            SHT45_SendCommand(g_sht45.eMeasPrecision);
+            eSht45State = SHT45_STATE_REC_MEASURE;
+            usSht45WaitTimer = 2; // Wait ~20ms
+            break;
+
+        case SHT45_STATE_REC_MEASURE:
+            // Receive measurement data
+            SHT45_ReceiveData(6);
+            eSht45State = SHT45_STATE_PROC_MEASURE;
+            usSht45WaitTimer = 2;
+            break;
+
+        case SHT45_STATE_PROC_MEASURE:
+        	// Process measurement result
+        	SHT45_ProcessMeasure();
+			eSht45State = SHT45_STATE_REQ_SERIAL;
+			usSht45WaitTimer = 2;
+			break;
+
+        case SHT45_STATE_REQ_SERIAL:
+            // Request serial number
+            SHT45_SendCommand(SHT45_CMD_READ_SERIAL_NUMB);
+            eSht45State = SHT45_STATE_REC_SERIAL;
+            usSht45WaitTimer = 2;
+            break;
+
+        case SHT45_STATE_REC_SERIAL:
+            // Receive serial number
+            SHT45_ReceiveData(6);
+            eSht45State = SHT45_STATE_PROC_SERIAL;
+            usSht45WaitTimer = 2;
+            break;
+
+		case SHT45_STATE_PROC_SERIAL:
+			// Receive serial number
+			SHT45_ProcessSerial();
+			eSht45State = SHT45_STATE_IDLE;
+			break;
+
+        case SHT45_STATE_REQ_HEATER:
+            // Request heater operation
+            SHT45_SendCommand(g_sht45.eHeaterMode);
+            eSht45State = SHT45_STATE_REC_HEATER;
+            usSht45WaitTimer = 120; // Wait for heater operation (1s + margin)
+            g_sht45.ucHeaterActivationFlag = 0;
+            break;
+
+        case SHT45_STATE_REC_HEATER:
+            // Receive heater result
+            SHT45_ReceiveData(6);
+            eSht45State = SHT45_STATE_IDLE;
+            usSht45WaitTimer = 2;
+            break;
+
+        case SHT45_STATE_REQ_SOFTRESET:
+            // Request soft reset
+            SHT45_SendCommand(SHT45_CMD_SOFT_RESET);
+            eSht45State = SHT45_STATE_WAIT_SOFTRESET;
+            usSht45WaitTimer = 50; // Wait 500ms for reset
+            g_sht45.ucSoftResetFlag = 0;
+            break;
+
+        case SHT45_STATE_WAIT_SOFTRESET:
+            // Send soft reset restart command
+            SHT45_SendCommand(SHT45_CMD_SOFT_RESET_RESTART);
+            eSht45State = SHT45_STATE_REQ_SOFTRESET_RESTART;
+            usSht45WaitTimer = 2;
+            break;
+
+        case SHT45_STATE_REQ_SOFTRESET_RESTART:
+            // Wait for restart to complete
+            eSht45State = SHT45_STATE_WAIT_SOFTRESET_COMPLETE;
+            usSht45WaitTimer = 50; // Wait for restart
+            break;
+
+        case SHT45_STATE_WAIT_SOFTRESET_COMPLETE:
+            // Soft reset complete
+            eSht45State = SHT45_STATE_IDLE;
+            break;
+
+        case SHT45_STATE_ERROR:
+            // Error state - reset after retry timeout
+            usSht45WaitTimer = 100; // Wait 1000ms before retry
+            eSht45State = SHT45_STATE_REQ_MEASURE;
+            break;
+
+        default:
+            eSht45State = SHT45_STATE_ERROR;
+            break;
+    }
+
+    // Check for pending requests
+    if (g_sht45.ucHeaterActivationFlag && eSht45State == SHT45_STATE_IDLE)
+    {
+        eSht45State = SHT45_STATE_REQ_HEATER;
+    }
+    
+    if (g_sht45.ucSoftResetFlag && eSht45State == SHT45_STATE_IDLE)
+    {
+        eSht45State = SHT45_STATE_REQ_SOFTRESET;
+    }
+}
+
+void SHT45_I2C_Complete_Callback(void)
+{
+    // This callback is called after DMA completes
+    // State progression is handled in Task() function
+    // We just mark that we're ready for the next step
+}
+
+void SHT45_I2C_Error_Callback(void)
+{
+    eSht45State = SHT45_STATE_ERROR;
+}
+
+void SHT45_RequestHeater(SHT45_HeaterMode_t eMode)
+{
+    g_sht45.eHeaterMode = eMode;
+    g_sht45.ucHeaterActivationFlag = 1;
+}
+
+void SHT45_RequestSoftReset(void)
+{
+    g_sht45.ucSoftResetFlag = 1;
+}
+
+void SHT45_SetMeasurementPrecision(SHT45_Precision_t ePrecision)
+{
+    g_sht45.eMeasPrecision = ePrecision;
 }

@@ -20,56 +20,37 @@ typedef enum
 	SENSOR_ERROR,
 } SensorType_t;
 
-//SHT45
-typedef enum{
-	ePrecMeas_High = 0xFD,
-	ePrecMeas_Medium = 0xF6,
-	ePrecMeas_Low = 0xE0,
-}MeasPrecision_t;
-
-typedef enum{
-	eHeaterMode_200mW_1s = 0x39,
-	eHeaterMode_200mW_100ms = 0x32,
-	eHeaterMode_110mW_1s = 0x2F,
-	eHeaterMode_110mW_100ms = 0x24,
-	eHeaterMode_20mW_1s = 0x1E,
-	eHeaterMode_20mW_100ms = 0x15
-}HeaterMode_t;
-
-
-//TMP117
-
+// Unified sensor data structure
 typedef struct
 {
-	//Universal data
+	// Universal data
     SensorType_t type;
-    uint16_t usSensorId;
-    uint16_t usTempRaw;
     float fTemp;
+    float fHum;
+    uint32_t usSensorId;
     uint8_t ucValidFlag;
     uint8_t ucNewDataFlag;
     uint8_t ucInitializedFlag;
-
-    //SHT45 specyfic
-    uint16_t usHumRaw;
-    float fHum;
-    MeasPrecision_t eSHT45MeasType;
-    HeaterMode_t eSHT45HeaterMode;
-
-    //TMP117 specyfic
-    uint16_t tusTMP117Eeprom[3];
-    uint16_t usTMP117ConfigRegister;
-
-    // timery
+    
+    // Timers
     uint16_t sMeasTaskTimer;
-    uint16_t sHeaterCooldownTime;
 } SensorData_t;
 
 extern SensorData_t g_sensor;
 
+// Initialization
 void Sensor_Init(I2C_HandleTypeDef *hi2c);
+
+// Main task (call every 1-10ms)
 void Sensor_Task(void);
 
-void Sensor_SHT45Heater(void);
+// I2C callback functions (to be called from HAL I2C complete/error callbacks)
+void Sensor_I2C_Complete_Callback(void);
+void Sensor_I2C_Error_Callback(void);
+
+// SHT45 specific functions
+void Sensor_SHT45_RequestHeater(uint8_t ucHeaterMode);
+void Sensor_SHT45_RequestSoftReset(void);
+void Sensor_SHT45_SetPrecision(uint8_t ucPrecision);
 
 #endif /* SENSOR_SENSOR_H_ */

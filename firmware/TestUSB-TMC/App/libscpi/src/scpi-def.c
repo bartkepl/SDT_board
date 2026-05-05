@@ -216,7 +216,8 @@ static scpi_result_t SCPI_SensorHeater(scpi_t *context) {
 	if (!g_sensor.ucValidFlag)
 		return SCPI_RES_ERR;
 
-	Sensor_SHT45Heater();
+	// Request heater with default power level (20mW, 1s)
+	Sensor_SHT45_RequestHeater(0x1E);
 
 	return SCPI_RES_OK;
 }
