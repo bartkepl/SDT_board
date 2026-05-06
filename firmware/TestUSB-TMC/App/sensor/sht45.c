@@ -21,12 +21,10 @@ static volatile uint8_t ucSht45Error = 0;
 
 // State machine timer period (10ms)
 #define SHT45_TASK_PERIOD_MS 10
-#define SHT45_READ_PERIOD_MS 1000
+#define SHT45_READ_PERIOD_MS 500
 #define SHT45_WAIT_TIMEOUT_MS 100  // 100ms timeout for DMA operations
 
 SHT45_Data_t g_sht45 = {0};
-static uint16_t usSht45WaitTimeout = 0;  // Timeout counter for wait states
-
 //------------------------------------------------------------------//
 // Private functions
 //------------------------------------------------------------------//
