@@ -265,3 +265,55 @@ void Sensor_SHT45_SetPrecision(uint8_t ucPrecision)
         SHT45_SetMeasurementPrecision((SHT45_Precision_t)ucPrecision);
     }
 }
+
+// SHT45 configuration management functions (wrappers for SCPI control)
+void Sensor_SHT45_SetReadPeriod(uint16_t periodMs)
+{
+    if (g_sensor.type == SENSOR_SHT45 || g_sensor.type == SENSOR_DUAL)
+    {
+        SHT45_SetReadPeriod(periodMs);
+    }
+}
+
+uint16_t Sensor_SHT45_GetReadPeriod(void)
+{
+    if (g_sensor.type == SENSOR_SHT45 || g_sensor.type == SENSOR_DUAL)
+    {
+        return SHT45_GetReadPeriod();
+    }
+    return 500;  // Default value if sensor is not SHT45
+}
+
+void Sensor_SHT45_SetAverageCount(uint8_t count)
+{
+    if (g_sensor.type == SENSOR_SHT45 || g_sensor.type == SENSOR_DUAL)
+    {
+        SHT45_SetAverageCount(count);
+    }
+}
+
+uint8_t Sensor_SHT45_GetAverageCount(void)
+{
+    if (g_sensor.type == SENSOR_SHT45 || g_sensor.type == SENSOR_DUAL)
+    {
+        return SHT45_GetAverageCount();
+    }
+    return 1;  // Default value if sensor is not SHT45
+}
+
+void Sensor_SHT45_SetMeasurementPrecision(uint8_t precision)
+{
+    if (g_sensor.type == SENSOR_SHT45 || g_sensor.type == SENSOR_DUAL)
+    {
+        SHT45_SetPrecision((SHT45_Precision_t)precision);
+    }
+}
+
+uint8_t Sensor_SHT45_GetMeasurementPrecision(void)
+{
+    if (g_sensor.type == SENSOR_SHT45 || g_sensor.type == SENSOR_DUAL)
+    {
+        return (uint8_t)SHT45_GetPrecision();
+    }
+    return SHT45_PRECISION_HIGH;  // Default value if sensor is not SHT45
+}

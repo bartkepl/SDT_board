@@ -12,6 +12,7 @@
 #include <usbtmc_app.h>
 #include <display.h>
 #include <sensor.h>
+#include <sht45.h>
 #include <Utils.h>
 
 
@@ -30,6 +31,12 @@ static scpi_result_t SCPI_SensorTemperatureQ(scpi_t *context);
 static scpi_result_t SCPI_SensorIdQ(scpi_t *context);
 static scpi_result_t SCPI_SensorHumidityQ(scpi_t *context);
 static scpi_result_t SCPI_SensorHeater(scpi_t *context);
+static scpi_result_t SCPI_SensorReadPeriodQ(scpi_t *context);
+static scpi_result_t SCPI_SensorReadPeriod(scpi_t *context);
+static scpi_result_t SCPI_SensorAverageQ(scpi_t *context);
+static scpi_result_t SCPI_SensorAverage(scpi_t *context);
+static scpi_result_t SCPI_SensorPrecisionQ(scpi_t *context);
+static scpi_result_t SCPI_SensorPrecision(scpi_t *context);
 static scpi_result_t SCPI_SystemBootloaderEnter(scpi_t *context);
 static scpi_result_t SCPI_SystemReset(scpi_t *context);
 static scpi_result_t SCPI_SystemIdQ(scpi_t *context);
@@ -78,6 +85,12 @@ static const scpi_command_t scpi_commands[] = {
 	{.pattern = "SENSor:ID?", .callback = SCPI_SensorIdQ,},							// odczyt ID czujnika (uint32_t)
 	{.pattern = "SENSor:HUMidity?", .callback = SCPI_SensorHumidityQ,},				// odczyt zmierzonej wilgotności (float tylko dla SHT45)
 	{.pattern = "SENSor:HEATer", .callback = SCPI_SensorHeater,},					// uruchomienie grzałki wbudowanej w SHT45 (tylko dla SHT45)
+	{.pattern = "SENSor:READperiod?", .callback = SCPI_SensorReadPeriodQ,},		// odczyt okresu pomiarów [ms] (SHT45 only)
+	{.pattern = "SENSor:READperiod", .callback = SCPI_SensorReadPeriod,},			// ustawienie okresu pomiarów [ms] (SHT45 only)
+	{.pattern = "SENSor:AVErage?", .callback = SCPI_SensorAverageQ,},				// odczyt liczby pomiarów do uśredniania
+	{.pattern = "SENSor:AVErage", .callback = SCPI_SensorAverage,},					// ustawienie liczby pomiarów do uśredniania (1-255)
+	{.pattern = "SENSor:PRECision?", .callback = SCPI_SensorPrecisionQ,},			// odczyt dokładności (0=LOW, 1=MEDIUM, 2=HIGH) (SHT45 only)
+	{.pattern = "SENSor:PRECision", .callback = SCPI_SensorPrecision,},				// ustawienie dokładności (0=LOW, 1=MEDIUM, 2=HIGH) (SHT45 only)
 
 
 	{.pattern = "DISPlay:BRIGhtness?", .callback = SCPI_DisplayBrightnessQ,},			// Odczyt aktualnej jasności
@@ -370,6 +383,100 @@ static scpi_result_t SCPI_DisplayTextQ(scpi_t *context) {
 
 	SCPI_ResultCharacters(context, Display_GetText(), 8);
 
+	return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_SensorReadPeriodQ(scpi_t *context) {
+	if (g_sensor.type != SENSOR_SHT45) {
+		return SCPI_RES_ERR;
+	}
+	SCPI_ResultInt32(context, Sensor_SHT45_GetReadPeriod());
+	return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_SensorReadPeriod(scpi_t *context) {
+	if (g_sensor.type != SENSOR_SHT45) {
+		return SCPI_RES_ERR;
+	}
+	
+	uint32_t periodMs = 500;
+	if (!SCPI_ParamUInt32(context, &periodMs, 1))
+		return SCPI_RES_ERR;
+	
+	// Clamp value between 50ms and 60000ms (60 seconds)
+	if (periodMs < 50 || periodMs > 60000)
+		return SCPI_RES_ERR;
+	
+	Sensor_SHT45_SetReadPeriod((uint16_t)periodMs);
+	return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_SensorAverageQ(scpi_t *context) {
+	if (g_sensor.type != SENSOR_SHT45) {
+		return SCPI_RES_ERR;
+	}
+	SCPI_ResultInt32(context, Sensor_SHT45_GetAverageCount());
+	return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_SensorAverage(scpi_t *context) {
+	if (g_sensor.type != SENSOR_SHT45) {
+		return SCPI_RES_ERR;
+	}
+	
+	uint32_t count = 1;
+	if (!SCPI_ParamUInt32(context, &count, 1))
+		return SCPI_RES_ERR;
+	
+	// Clamp value between 1 and 255
+	if (count < 1 || count > 255)
+		return SCPI_RES_ERR;
+	
+	Sensor_SHT45_SetAverageCount((uint8_t)count);
+	return SCPI_RES_OK;
+}
+
+static const scpi_choice_def_t precision_options[] = {
+	{ "LOW", SHT45_PRECISION_LOW },
+	{ "MEDIUM", SHT45_PRECISION_MEDIUM },
+	{ "HIGH", SHT45_PRECISION_HIGH },
+	SCPI_CHOICE_LIST_END
+};
+
+static scpi_result_t SCPI_SensorPrecisionQ(scpi_t *context) {
+	if (g_sensor.type != SENSOR_SHT45) {
+		return SCPI_RES_ERR;
+	}
+	
+	uint8_t precision = Sensor_SHT45_GetMeasurementPrecision();
+	
+	// Convert precision enum to choice string
+	switch ((SHT45_Precision_t)precision) {
+		case SHT45_PRECISION_LOW:
+			SCPI_ResultText(context, "LOW");
+			break;
+		case SHT45_PRECISION_MEDIUM:
+			SCPI_ResultText(context, "MEDIUM");
+			break;
+		case SHT45_PRECISION_HIGH:
+			SCPI_ResultText(context, "HIGH");
+			break;
+		default:
+			return SCPI_RES_ERR;
+	}
+	return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_SensorPrecision(scpi_t *context) {
+	if (g_sensor.type != SENSOR_SHT45) {
+		return SCPI_RES_ERR;
+	}
+	
+	int32_t precision = SHT45_PRECISION_HIGH;
+	if (!SCPI_ParamChoice(context, precision_options, &precision, TRUE))
+		return SCPI_RES_ERR;
+	
+	Sensor_SHT45_SetMeasurementPrecision((uint8_t)precision);
 	return SCPI_RES_OK;
 }
 

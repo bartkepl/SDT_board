@@ -71,6 +71,17 @@ typedef enum {
     SHT45_HEATER_20MW_100MS = 0x15
 } SHT45_HeaterMode_t;
 
+// SHT45 Configuration structure
+// Contains configurable parameters that can be persisted in FLASH
+typedef struct {
+    SHT45_Precision_t eMeasPrecision;      // Measurement precision mode
+    SHT45_HeaterMode_t eHeaterMode;         // Heater operation mode
+    uint16_t readPeriodMs;                  // Period between measurements (ms)
+    uint8_t averageCount;                   // Number of measurements to average (1-255)
+                                             // AVG=1: single measurement
+                                             // AVG=10: average 10 measurements
+} SHT45_Config_t;
+
 // SHT45 Data structure
 typedef struct {
     float fTemp;
@@ -88,6 +99,7 @@ typedef struct {
 } SHT45_Data_t;
 
 extern SHT45_Data_t g_sht45;
+extern SHT45_Config_t g_sht45_config;
 
 void SHT45_Init(I2C_HandleTypeDef *hi2c);
 void SHT45_Task(void);
@@ -98,6 +110,14 @@ void SHT45_I2C_Error_Callback(void);
 // Public command functions
 void SHT45_RequestHeater(SHT45_HeaterMode_t eMode);
 void SHT45_RequestSoftReset(void);
+
+// Configuration management functions
+void SHT45_SetReadPeriod(uint16_t periodMs);
+uint16_t SHT45_GetReadPeriod(void);
+void SHT45_SetAverageCount(uint8_t count);
+uint8_t SHT45_GetAverageCount(void);
+void SHT45_SetPrecision(SHT45_Precision_t precision);
+SHT45_Precision_t SHT45_GetPrecision(void);
 void SHT45_SetMeasurementPrecision(SHT45_Precision_t ePrecision);
 
 #endif /* SENSOR_SHT45_H_ */

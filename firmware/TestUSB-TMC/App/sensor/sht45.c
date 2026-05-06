@@ -21,10 +21,17 @@ static volatile uint8_t ucSht45Error = 0;
 
 // State machine timer period (10ms)
 #define SHT45_TASK_PERIOD_MS 10
-#define SHT45_READ_PERIOD_MS 500
 #define SHT45_WAIT_TIMEOUT_MS 100  // 100ms timeout for DMA operations
 
 SHT45_Data_t g_sht45 = {0};
+
+// Default SHT45 Configuration
+SHT45_Config_t g_sht45_config = {
+    .eMeasPrecision = SHT45_PRECISION_HIGH,
+    .eHeaterMode = SHT45_HEATER_20MW_1S,
+    .readPeriodMs = 500,
+    .averageCount = 1,
+};
 //------------------------------------------------------------------//
 // Private functions
 //------------------------------------------------------------------//
@@ -124,8 +131,8 @@ void SHT45_Init(I2C_HandleTypeDef *hi2c)
     g_sht45.fTemp = 0;
     g_sht45.fHum = 0;
     g_sht45.uSerialNumber = 0;
-    g_sht45.eMeasPrecision = SHT45_PRECISION_HIGH;
-    g_sht45.eHeaterMode = SHT45_HEATER_20MW_1S;
+    g_sht45.ucHeaterActivationFlag = 0;
+    g_sht45.ucSoftResetFlag = 0;
     
     ucSht45TxComplete = 0;
     ucSht45RxComplete = 0;
@@ -153,8 +160,8 @@ void SHT45_Task(void)
     switch (eSht45State)
     {
         case SHT45_STATE_IDLE:
-            // Periodic measurement every 1000ms
-            if (SysTimTestTimer1ms_u16(&sSht45ReadTimer, SHT45_READ_PERIOD_MS))
+            // Periodic measurement with configurable period and NPLC
+            if (SysTimTestTimer1ms_u16(&sSht45ReadTimer, g_sht45_config.readPeriodMs))
             {
                 eSht45State = SHT45_STATE_REQ_MEASURE;
             }
@@ -162,7 +169,7 @@ void SHT45_Task(void)
 
         case SHT45_STATE_REQ_MEASURE:
             // Request measurement
-            SHT45_SendCommand(g_sht45.eMeasPrecision);
+            SHT45_SendCommand(g_sht45_config.eMeasPrecision);
             eSht45State = SHT45_STATE_WAIT_TX_MEASURE;
             break;
 
@@ -269,7 +276,7 @@ void SHT45_Task(void)
 
         case SHT45_STATE_REQ_HEATER:
             // Request heater operation
-            SHT45_SendCommand(g_sht45.eHeaterMode);
+            SHT45_SendCommand(g_sht45_config.eHeaterMode);
             eSht45State = SHT45_STATE_WAIT_TX_HEATER;
             g_sht45.ucHeaterActivationFlag = 0;
             break;
@@ -410,7 +417,7 @@ void SHT45_I2C_Error_Callback(void)
 
 void SHT45_RequestHeater(SHT45_HeaterMode_t eMode)
 {
-    g_sht45.eHeaterMode = eMode;
+    g_sht45_config.eHeaterMode = eMode;
     g_sht45.ucHeaterActivationFlag = 1;
 }
 
@@ -419,7 +426,42 @@ void SHT45_RequestSoftReset(void)
     g_sht45.ucSoftResetFlag = 1;
 }
 
+// Configuration management functions
+void SHT45_SetReadPeriod(uint16_t periodMs)
+{
+    g_sht45_config.readPeriodMs = periodMs;
+    SysTimZeroTimer1ms_u16(&sSht45ReadTimer);  // Reset timer to apply new period
+}
+
+uint16_t SHT45_GetReadPeriod(void)
+{
+    return g_sht45_config.readPeriodMs;
+}
+
+void SHT45_SetAverageCount(uint8_t count)
+{
+    // Clamp average count between 1 and 255
+    if (count < 1) count = 1;
+    g_sht45_config.averageCount = count;
+    // Note: Averaging can be extended later for multi-sample averaging logic
+}
+
+uint8_t SHT45_GetAverageCount(void)
+{
+    return g_sht45_config.averageCount;
+}
+
+void SHT45_SetPrecision(SHT45_Precision_t precision)
+{
+    g_sht45_config.eMeasPrecision = precision;
+}
+
+SHT45_Precision_t SHT45_GetPrecision(void)
+{
+    return g_sht45_config.eMeasPrecision;
+}
+
 void SHT45_SetMeasurementPrecision(SHT45_Precision_t ePrecision)
 {
-    g_sht45.eMeasPrecision = ePrecision;
+    SHT45_SetPrecision(ePrecision);
 }

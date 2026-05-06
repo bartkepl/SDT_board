@@ -54,4 +54,12 @@ void Sensor_SHT45_RequestHeater(uint8_t ucHeaterMode);
 void Sensor_SHT45_RequestSoftReset(void);
 void Sensor_SHT45_SetPrecision(uint8_t ucPrecision);
 
+// SHT45 configuration management (SCPI control)
+void Sensor_SHT45_SetReadPeriod(uint16_t periodMs);
+uint16_t Sensor_SHT45_GetReadPeriod(void);
+void Sensor_SHT45_SetAverageCount(uint8_t count);
+uint8_t Sensor_SHT45_GetAverageCount(void);
+void Sensor_SHT45_SetMeasurementPrecision(uint8_t precision);
+uint8_t Sensor_SHT45_GetMeasurementPrecision(void);
+
 #endif /* SENSOR_SENSOR_H_ */
