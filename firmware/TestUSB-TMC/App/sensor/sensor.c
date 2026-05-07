@@ -337,3 +337,80 @@ uint8_t Sensor_SHT45_GetMeasurementPrecision(void)
     }
     return SHT45_PRECISION_HIGH;  // Default value if sensor is not SHT45
 }
+
+//------------------------------------------------------------------//
+// TMP117 wrapper functions
+//------------------------------------------------------------------//
+
+#define TMP117_PRESENT (g_sensor.type == SENSOR_TMP117 || g_sensor.type == SENSOR_DUAL)
+
+void Sensor_TMP117_SetMode(uint8_t mode)
+{
+    if (TMP117_PRESENT) TMP117_SetMode((TMP117_Mode_t)mode);
+}
+uint8_t Sensor_TMP117_GetMode(void)
+{
+    if (TMP117_PRESENT) return (uint8_t)TMP117_GetMode();
+    return (uint8_t)TMP117_MODE_CONTINUOUS;
+}
+
+void Sensor_TMP117_SetConvRate(uint8_t rate)
+{
+    if (TMP117_PRESENT) TMP117_SetConvRate(rate);
+}
+uint8_t Sensor_TMP117_GetConvRate(void)
+{
+    if (TMP117_PRESENT) return TMP117_GetConvRate();
+    return 4u;
+}
+
+void Sensor_TMP117_SetAvgHW(uint8_t avg)
+{
+    if (TMP117_PRESENT) TMP117_SetAvgHW((TMP117_Averaging_t)avg);
+}
+uint8_t Sensor_TMP117_GetAvgHW(void)
+{
+    if (TMP117_PRESENT) return (uint8_t)TMP117_GetAvgHW();
+    return (uint8_t)TMP117_AVG_8;
+}
+
+void Sensor_TMP117_SetReadPeriod(uint16_t periodMs)
+{
+    if (TMP117_PRESENT) TMP117_SetReadPeriod(periodMs);
+}
+uint16_t Sensor_TMP117_GetReadPeriod(void)
+{
+    if (TMP117_PRESENT) return TMP117_GetReadPeriod();
+    return 1000u;
+}
+
+void Sensor_TMP117_SetAlertHigh(float fTemp)
+{
+    if (TMP117_PRESENT) TMP117_SetAlertHigh(fTemp);
+}
+float Sensor_TMP117_GetAlertHigh(void)
+{
+    if (TMP117_PRESENT) return TMP117_GetAlertHigh();
+    return 0.0f;
+}
+
+void Sensor_TMP117_SetAlertLow(float fTemp)
+{
+    if (TMP117_PRESENT) TMP117_SetAlertLow(fTemp);
+}
+float Sensor_TMP117_GetAlertLow(void)
+{
+    if (TMP117_PRESENT) return TMP117_GetAlertLow();
+    return 0.0f;
+}
+
+uint8_t Sensor_TMP117_GetAlertStatus(void)
+{
+    if (TMP117_PRESENT) return TMP117_GetAlertStatus();
+    return 0u;
+}
+
+void Sensor_TMP117_RequestSoftReset(void)
+{
+    if (TMP117_PRESENT) TMP117_RequestSoftReset();
+}

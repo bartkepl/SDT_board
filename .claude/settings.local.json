@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"e:\\\\PROJEKTY\\\\KiCAD\\\\TM\\\\SDT_board\\\\firmware\\\\TestUSB-TMC\" -Recurse -Directory)",
+      "Bash(Select-Object -First 30)"
+    ]
+  }
+}

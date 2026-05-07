@@ -69,4 +69,20 @@ uint8_t Sensor_SHT45_GetAverageCount(void);
 void Sensor_SHT45_SetMeasurementPrecision(uint8_t precision);
 uint8_t Sensor_SHT45_GetMeasurementPrecision(void);
 
+// TMP117 specific functions
+void     Sensor_TMP117_SetMode(uint8_t mode);
+uint8_t  Sensor_TMP117_GetMode(void);
+void     Sensor_TMP117_SetConvRate(uint8_t rate);
+uint8_t  Sensor_TMP117_GetConvRate(void);
+void     Sensor_TMP117_SetAvgHW(uint8_t avg);
+uint8_t  Sensor_TMP117_GetAvgHW(void);
+void     Sensor_TMP117_SetReadPeriod(uint16_t periodMs);
+uint16_t Sensor_TMP117_GetReadPeriod(void);
+void     Sensor_TMP117_SetAlertHigh(float fTemp);
+float    Sensor_TMP117_GetAlertHigh(void);
+void     Sensor_TMP117_SetAlertLow(float fTemp);
+float    Sensor_TMP117_GetAlertLow(void);
+uint8_t  Sensor_TMP117_GetAlertStatus(void);
+void     Sensor_TMP117_RequestSoftReset(void);
+
 #endif /* SENSOR_SENSOR_H_ */
