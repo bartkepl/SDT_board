@@ -38,6 +38,13 @@ typedef struct
 
 extern SensorData_t g_sensor;
 
+// I2C bus arbitration for DUAL sensor mode
+#define I2C_SENSOR_NONE   0u
+#define I2C_SENSOR_TMP117 1u
+#define I2C_SENSOR_SHT45  2u
+
+extern volatile uint8_t g_i2c_active_sensor;
+
 // Initialization
 void Sensor_Init(I2C_HandleTypeDef *hi2c);
 

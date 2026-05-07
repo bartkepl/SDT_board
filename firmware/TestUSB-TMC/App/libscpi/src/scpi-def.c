@@ -374,7 +374,7 @@ static scpi_result_t SCPI_DisplayText(scpi_t *context) {
 	memset(buf, ' ', 8);
 	memcpy(buf, ptr, len > 8 ? 8 : len);
 
-	Display_SetText(buf);
+	Display_SetText(buf, 8);
 
 	return SCPI_RES_OK;
 }

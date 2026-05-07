@@ -21,16 +21,10 @@ static uint8_t serial_initialized = 0;
 
 
 uint8_t SysTimTestTimer1ms_u16(uint16_t *pusCnt, uint16_t usTime) {
-  uint16_t usTick = HAL_GetTick() & 0xFFFF;
-  uint16_t usTickDiff = 0;
-  if (usTick >= (*pusCnt)) {
-    usTickDiff = (uint16_t) ((usTick - (*pusCnt)) & 0xffff);
-  } else {
-    usTickDiff = (uint16_t) ((UINT16_MAX - (*pusCnt) + usTick + 1) & 0xffff);
-  }
-
-  if (usTickDiff >= usTime) {
-    SysTimZeroTimer1ms_u16(pusCnt);
+  uint16_t usTick = (uint16_t)HAL_GetTick();
+  // Unsigned subtraction wraps correctly on overflow (C standard)
+  if ((uint16_t)(usTick - *pusCnt) >= usTime) {
+    *pusCnt = usTick;
     return 1;
   }
   return 0;
@@ -38,7 +32,7 @@ uint8_t SysTimTestTimer1ms_u16(uint16_t *pusCnt, uint16_t usTime) {
 
 
 void SysTimZeroTimer1ms_u16(uint16_t *pusCnt) {
-  (*pusCnt) = (uint16_t) (HAL_GetTick() & 0xFFFF);
+  *pusCnt = (uint16_t)HAL_GetTick();
 }
 
 

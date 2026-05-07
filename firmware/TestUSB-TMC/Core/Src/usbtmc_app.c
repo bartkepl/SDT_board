@@ -96,6 +96,12 @@ bool query_received;
 void tud_usbtmc_open_cb(uint8_t interface_id)
 {
   (void)interface_id;
+  queryState    = 0;
+  bulkInStarted = 0;
+  reply_len     = 0;
+  buffer_len    = 0;
+  buffer_tx_ix  = 0;
+  status        = 0;
   tud_usbtmc_start_bus_read();
 }
 
@@ -198,12 +204,10 @@ bool tud_usbtmc_msgBulkIn_request_cb(usbtmc_msg_request_dev_dep_in const * reque
   return true;
 }
 
-void setReply (const char *data, size_t len) {
-  // attach replies to the buffer until the SCPI engine is finished.
-  // no one should run away with the data, because only one core has focus
-  // on scpi engine and USB state machine
-  // TODO verify
-  memcpy(reply + (reply_len * sizeof reply[0]), data, len);
+void setReply(const char *data, size_t len) {
+  if (reply_len + len > sizeof(reply))
+    return;
+  memcpy(reply + reply_len, data, len);
   reply_len += len;
 }
 
@@ -218,9 +222,9 @@ void usbtmc_app_task_iter(void) {
   case 2:
     if( (HAL_GetTick() - queryDelayStart) > resp_delay) {
       queryDelayStart = HAL_GetTick();
-      queryState=3;
-      status |= 0x10u; // MAV
-      status |= 0x40u; // SRQ
+      queryState = 3;
+      status |= IEEE4882_STB_MAV;
+      status |= IEEE4882_STB_SRQ;
     }
     break;
   case 3:

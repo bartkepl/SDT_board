@@ -13,6 +13,8 @@
 
 SensorData_t g_sensor = {0};
 
+volatile uint8_t g_i2c_active_sensor = I2C_SENSOR_NONE;
+
 static I2C_HandleTypeDef *sensor_i2c;
 static uint16_t sTaskSensorTimer = 0;
 
@@ -25,25 +27,22 @@ static uint16_t sTaskSensorTimer = 0;
 
 static void detectSensor(void)
 {
-	// TMP117 address = 0x48 << 1
-	if (HAL_I2C_IsDeviceReady(sensor_i2c, TMP117_ADDR, 2, 50) == HAL_OK) {
-		g_sensor.type = SENSOR_TMP117;
-		TMP117_Init(sensor_i2c);
-		return;
-	}
+    uint8_t found_tmp117 = (HAL_I2C_IsDeviceReady(sensor_i2c, TMP117_ADDR, 1, 5) == HAL_OK);
+    uint8_t found_sht45  = (HAL_I2C_IsDeviceReady(sensor_i2c, SHT45_ADDR,  1, 5) == HAL_OK);
 
-	// SHT45 address = 0x44 << 1
-	if (HAL_I2C_IsDeviceReady(sensor_i2c, SHT45_ADDR, 2, 50) == HAL_OK) {
-		if (g_sensor.type == SENSOR_NONE) {
-			g_sensor.type = SENSOR_SHT45;
-			SHT45_Init(sensor_i2c);
-		} else {
-			g_sensor.type = SENSOR_DUAL;
-		}
-		return;
-	}
-
-    g_sensor.type = SENSOR_NONE;
+    if (found_tmp117 && found_sht45) {
+        g_sensor.type = SENSOR_DUAL;
+        TMP117_Init(sensor_i2c);
+        SHT45_Init(sensor_i2c);
+    } else if (found_tmp117) {
+        g_sensor.type = SENSOR_TMP117;
+        TMP117_Init(sensor_i2c);
+    } else if (found_sht45) {
+        g_sensor.type = SENSOR_SHT45;
+        SHT45_Init(sensor_i2c);
+    } else {
+        g_sensor.type = SENSOR_NONE;
+    }
 }
 
 //------------------------------------------------------------------//
@@ -185,25 +184,30 @@ void Sensor_Task(void)
     {
         char buf[8];
         ConvertFloatTempToChar(g_sensor.fTemp, buf);
-        Display_SetMeasurement(buf);
+        Display_SetMeasurement(buf, 8);
         g_sensor.ucNewDataFlag = false;
     }
 }
 
 void Sensor_I2C_TxComplete_Callback(void)
 {
-    // Route callback to appropriate sensor
     switch (g_sensor.type)
     {
         case SENSOR_TMP117:
-        	TMP117_I2C_TxComplete_Callback();
+            TMP117_I2C_TxComplete_Callback();
             break;
-            
+
         case SENSOR_SHT45:
-        case SENSOR_DUAL:
             SHT45_I2C_TxComplete_Callback();
             break;
-            
+
+        case SENSOR_DUAL:
+            if (g_i2c_active_sensor == I2C_SENSOR_TMP117)
+                TMP117_I2C_TxComplete_Callback();
+            else if (g_i2c_active_sensor == I2C_SENSOR_SHT45)
+                SHT45_I2C_TxComplete_Callback();
+            break;
+
         default:
             break;
     }
@@ -211,18 +215,23 @@ void Sensor_I2C_TxComplete_Callback(void)
 
 void Sensor_I2C_RxComplete_Callback(void)
 {
-    // Route callback to appropriate sensor
     switch (g_sensor.type)
     {
         case SENSOR_TMP117:
-        	TMP117_I2C_RxComplete_Callback();
+            TMP117_I2C_RxComplete_Callback();
             break;
-            
+
         case SENSOR_SHT45:
-        case SENSOR_DUAL:
             SHT45_I2C_RxComplete_Callback();
             break;
-            
+
+        case SENSOR_DUAL:
+            if (g_i2c_active_sensor == I2C_SENSOR_TMP117)
+                TMP117_I2C_RxComplete_Callback();
+            else if (g_i2c_active_sensor == I2C_SENSOR_SHT45)
+                SHT45_I2C_RxComplete_Callback();
+            break;
+
         default:
             break;
     }
@@ -230,14 +239,25 @@ void Sensor_I2C_RxComplete_Callback(void)
 
 void Sensor_I2C_Error_Callback(void)
 {
-    // Route error callback to appropriate sensor(s)
-    if (g_sensor.type == SENSOR_TMP117)
+    switch (g_sensor.type)
     {
-        TMP117_I2C_Error_Callback();
-    }
-    else if (g_sensor.type == SENSOR_SHT45 || g_sensor.type == SENSOR_DUAL)
-    {
-        SHT45_I2C_Error_Callback();
+        case SENSOR_TMP117:
+            TMP117_I2C_Error_Callback();
+            break;
+
+        case SENSOR_SHT45:
+            SHT45_I2C_Error_Callback();
+            break;
+
+        case SENSOR_DUAL:
+            if (g_i2c_active_sensor == I2C_SENSOR_TMP117)
+                TMP117_I2C_Error_Callback();
+            else if (g_i2c_active_sensor == I2C_SENSOR_SHT45)
+                SHT45_I2C_Error_Callback();
+            break;
+
+        default:
+            break;
     }
 }
 

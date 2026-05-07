@@ -62,15 +62,19 @@ void ConvertFloatTempToChar(float t, char *buf)
     buf[7] = DEGREE_CHAR;
 }
 
-void Display_SetMeasurement(char *data)
+void Display_SetMeasurement(const char *data, size_t len)
 {
-	memcpy(xDisplayData.measBuffer,data,8);
+    size_t n = len < 8u ? len : 8u;
+    memset(xDisplayData.measBuffer, ' ', 8);
+    memcpy(xDisplayData.measBuffer, data, n);
     xDisplayData.measNewData = 1;
 }
 
-void Display_SetText(char *data)
+void Display_SetText(const char *data, size_t len)
 {
-	memcpy(xDisplayData.textBuffer,data,8);
+    size_t n = len < 8u ? len : 8u;
+    memset(xDisplayData.textBuffer, ' ', 8);
+    memcpy(xDisplayData.textBuffer, data, n);
     xDisplayData.textNewData = 1;
 }
 
