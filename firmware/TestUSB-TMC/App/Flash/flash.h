@@ -12,10 +12,11 @@
 #include <string.h>
 #include <stdint.h>
 
-#define FLASH_CONFIG_SIZES_PAGES	1			// Ilość stron na parametry
+#define FLASH_CONFIG_SIZES_PAGES	8			// Ilość stron na parametry
 #define FLASH_PAGES       			64        	// Ilośc stron FLASH w STM32C071
-#define FLASH_PAGE_SIZE         	2048       	// rozmiar strony (2 KB dla STM32C071)
 #define FLASH_CONFIG_ADDRESS    	(FLASH_BASE + (FLASH_PAGES - FLASH_CONFIG_SIZES_PAGES) * FLASH_PAGE_SIZE) // Start pamięci CONFIG FLASH
+
+const uint8_t __attribute__((section(".device_basic"))) ucDeviceBasic = 8;
 
 // Przykładowa struktura konfiguracji
 typedef struct __attribute__((packed)) {
@@ -26,11 +27,10 @@ typedef struct __attribute__((packed)) {
 } ConfigType_t;
 
 
-extern ConfigType gConfig;
 
 // Funkcje
-HAL_StatusTypeDef Config_Flash_Write(ConfigType* cfg);
-HAL_StatusTypeDef Config_Flash_Read(ConfigType* cfg);
-uint32_t Config_CalcCRC(ConfigType* cfg);
+HAL_StatusTypeDef Config_Flash_Write(ConfigType_t* cfg);
+HAL_StatusTypeDef Config_Flash_Read(ConfigType_t* cfg);
+uint32_t Config_CalcCRC(ConfigType_t* cfg);
 
 #endif /* FLASH_FLASH_H_ */

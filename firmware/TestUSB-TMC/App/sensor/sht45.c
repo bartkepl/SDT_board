@@ -85,7 +85,7 @@ static void SHT45_ProcessMeasure(void)
         g_sht45.ucValidFlag = 0;
         return;
     }
-    
+
     // Check CRC for humidity
     if (crc8(ucSht45RxBuffer + 3, 2) != ucSht45RxBuffer[5])
     {
@@ -96,9 +96,48 @@ static void SHT45_ProcessMeasure(void)
     uint16_t rawT = (ucSht45RxBuffer[0] << 8) | ucSht45RxBuffer[1];
     uint16_t rawH = (ucSht45RxBuffer[3] << 8) | ucSht45RxBuffer[4];
 
-    g_sht45.fTemp = -45.0f + 175.0f * ((float)rawT / 65535.0f);
-    g_sht45.fHum = -6.0f + 125.0f * ((float)rawH / 65535.0f);
-    
+    float temp = -45.0f + 175.0f * ((float)rawT / 65535.0f);
+    float hum = -6.0f + 125.0f * ((float)rawH / 65535.0f);
+
+    uint8_t avgCount = g_sht45_config.averageCount;
+
+    // Safety clamp
+    if (avgCount == 0)
+        avgCount = 1;
+
+    // AVG = 1 -> immediate publish
+    if (avgCount == 1)
+    {
+        g_sht45.fTemp = temp;
+        g_sht45.fHum = hum;
+
+        g_sht45.ucValidFlag = 1;
+        g_sht45.ucNewDataFlag = 1;
+
+        return;
+    }
+
+    // Accumulate samples
+    g_sht45.fTempAcc += temp;
+    g_sht45.fHumAcc += hum;
+    g_sht45.ucAverageSampleCnt++;
+
+    // Wait for enough samples
+    if (g_sht45.ucAverageSampleCnt < avgCount)
+    {
+        return;
+    }
+
+    // Calculate average
+    g_sht45.fTemp = g_sht45.fTempAcc / (float)g_sht45.ucAverageSampleCnt;
+    g_sht45.fHum = g_sht45.fHumAcc / (float)g_sht45.ucAverageSampleCnt;
+
+    // Reset accumulators
+    g_sht45.fTempAcc = 0.0f;
+    g_sht45.fHumAcc = 0.0f;
+    g_sht45.ucAverageSampleCnt = 0;
+
+    // Publish new averaged value
     g_sht45.ucValidFlag = 1;
     g_sht45.ucNewDataFlag = 1;
 }
@@ -130,6 +169,9 @@ void SHT45_Init(I2C_HandleTypeDef *hi2c)
     g_sht45.ucInitializedFlag = 1;
     g_sht45.fTemp = 0;
     g_sht45.fHum = 0;
+    g_sht45.fTempAcc = 0.0f;
+    g_sht45.fHumAcc = 0.0f;
+    g_sht45.ucAverageSampleCnt = 0;
     g_sht45.uSerialNumber = 0;
     g_sht45.ucHeaterActivationFlag = 0;
     g_sht45.ucSoftResetFlag = 0;
@@ -441,9 +483,15 @@ uint16_t SHT45_GetReadPeriod(void)
 void SHT45_SetAverageCount(uint8_t count)
 {
     // Clamp average count between 1 and 255
-    if (count < 1) count = 1;
+    if (count < 1)
+        count = 1;
+
     g_sht45_config.averageCount = count;
-    // Note: Averaging can be extended later for multi-sample averaging logic
+
+    // Reset averaging buffers
+    g_sht45.fTempAcc = 0.0f;
+    g_sht45.fHumAcc = 0.0f;
+    g_sht45.ucAverageSampleCnt = 0;
 }
 
 uint8_t SHT45_GetAverageCount(void)

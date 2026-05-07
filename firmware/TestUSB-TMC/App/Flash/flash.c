@@ -8,10 +8,10 @@
 #include "flash.h"
 
 // Globalna konfiguracja
-ConfigType gConfig;
+ConfigType_t gConfig;
 
 // Funkcja obliczająca CRC32 (CRC32 standard STM32)
-uint32_t Config_CalcCRC(ConfigType* cfg)
+uint32_t Config_CalcCRC(ConfigType_t* cfg)
 {
     CRC_HandleTypeDef hcrc;
     __HAL_RCC_CRC_CLK_ENABLE();
@@ -20,14 +20,14 @@ uint32_t Config_CalcCRC(ConfigType* cfg)
     HAL_CRC_Init(&hcrc);
 
     // Obliczamy CRC bez pola crc
-    uint32_t crc_val = HAL_CRC_Calculate(&hcrc, (uint32_t*)cfg, (sizeof(ConfigType)-sizeof(uint32_t))/4);
+    uint32_t crc_val = HAL_CRC_Calculate(&hcrc, (uint32_t*)cfg, (sizeof(ConfigType_t)-sizeof(uint32_t))/4);
 
     HAL_CRC_DeInit(&hcrc);
     return crc_val;
 }
 
 // Zapis do FLASH
-HAL_StatusTypeDef Config_Flash_Write(ConfigType* cfg)
+HAL_StatusTypeDef Config_Flash_Write(ConfigType_t* cfg)
 {
     HAL_StatusTypeDef status;
 
@@ -53,7 +53,7 @@ HAL_StatusTypeDef Config_Flash_Write(ConfigType* cfg)
 
     // Zapisz strukturę do FLASH
     uint32_t* data = (uint32_t*)cfg;
-    for (size_t i = 0; i < sizeof(ConfigType)/4; i++)
+    for (size_t i = 0; i < sizeof(ConfigType_t)/4; i++)
     {
         status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_FAST, FLASH_CONFIG_ADDRESS + i*4, data[i]);
         if (status != HAL_OK)
@@ -68,10 +68,10 @@ HAL_StatusTypeDef Config_Flash_Write(ConfigType* cfg)
 }
 
 // Odczyt z FLASH
-HAL_StatusTypeDef Config_Flash_Read(ConfigType* cfg)
+HAL_StatusTypeDef Config_Flash_Read(ConfigType_t* cfg)
 {
-    ConfigType temp;
-    memcpy(&temp, (void*)FLASH_CONFIG_ADDRESS, sizeof(ConfigType));
+	ConfigType_t temp;
+    memcpy(&temp, (void*)FLASH_CONFIG_ADDRESS, sizeof(ConfigType_t));
 
     // Sprawdź CRC
     uint32_t crc_calc = Config_CalcCRC(&temp);
@@ -80,6 +80,6 @@ HAL_StatusTypeDef Config_Flash_Read(ConfigType* cfg)
         return HAL_ERROR; // błąd CRC
     }
 
-    memcpy(cfg, &temp, sizeof(ConfigType));
+    memcpy(cfg, &temp, sizeof(ConfigType_t));
     return HAL_OK;
 }

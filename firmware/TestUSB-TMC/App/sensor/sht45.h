@@ -91,6 +91,11 @@ typedef struct {
     uint8_t ucNewDataFlag;
     uint8_t ucInitializedFlag;
     
+    // Averaging accumulators
+    float fTempAcc;
+    float fHumAcc;
+    uint8_t ucAverageSampleCnt;
+
     // Control flags
     uint8_t ucHeaterActivationFlag;
     uint8_t ucSoftResetFlag;

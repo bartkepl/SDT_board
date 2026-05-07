@@ -12,7 +12,7 @@ class SCPIGui:
     def __init__(self, root):
         self.root = root
         self.root.title("SCPI Device GUI - SDT Board")
-        self.root.geometry("700x900")
+        #self.root.geometry("700x900")
 
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
@@ -38,7 +38,7 @@ class SCPIGui:
     def create_widgets(self):
         # --- Connection Frame ---
         conn_frame = ttk.LabelFrame(self.root, text="Connection")
-        conn_frame.grid(row=0, column=0, padx=10, pady=5, sticky="ew")
+        conn_frame.grid(row=0, column=0, padx=10, pady=5, sticky="ew", columnspan=2)
 
         self.resource_combo = ttk.Combobox(conn_frame, width=40)
         self.resource_combo.grid(row=0, column=0, padx=5, pady=5)
@@ -51,7 +51,7 @@ class SCPIGui:
 
         # --- Sensor Frame ---
         sensor_frame = ttk.LabelFrame(self.root, text="Sensor")
-        sensor_frame.grid(row=2, column=0, padx=10, pady=5, sticky="ew")
+        sensor_frame.grid(row=2, column=0, padx=10, pady=5, sticky="ew", columnspan=2)
 
         ttk.Button(sensor_frame, text="Type?", command=self.get_sensor_type).grid(row=0, column=0, padx=2)
         ttk.Button(sensor_frame, text="Temperature?", command=self.get_temperature).grid(row=0, column=1, padx=2)
@@ -61,7 +61,7 @@ class SCPIGui:
 
         # --- SHT45 Configuration Frame (NEW) ---
         config_frame = ttk.LabelFrame(self.root, text="SHT45 Configuration")
-        config_frame.grid(row=3, column=0, padx=10, pady=5, sticky="ew")
+        config_frame.grid(row=3, column=0, padx=10, pady=5, sticky="ew", columnspan=2)
 
         # Read Period
         ttk.Label(config_frame, text="Read Period [ms]:").grid(row=0, column=0, sticky="w")
@@ -71,13 +71,14 @@ class SCPIGui:
         ttk.Button(config_frame, text="Set", command=self.set_read_period).grid(row=0, column=2, padx=2)
         ttk.Button(config_frame, text="Get", command=self.get_read_period).grid(row=0, column=3, padx=2)
 
-        # Measurement NPLC
-        ttk.Label(config_frame, text="Measurement NPLC (1-255):").grid(row=1, column=0, sticky="w")
-        self.nplc_entry = ttk.Entry(config_frame, width=12)
-        self.nplc_entry.insert(0, "1")
-        self.nplc_entry.grid(row=1, column=1, padx=5)
-        ttk.Button(config_frame, text="Set", command=self.set_nplc).grid(row=1, column=2, padx=2)
-        ttk.Button(config_frame, text="Get", command=self.get_nplc).grid(row=1, column=3, padx=2)
+        # Measurement Average
+        ttk.Label(config_frame, text="Average Count (1-255):").grid(row=1, column=0, sticky="w")
+        self.average_entry = ttk.Entry(config_frame, width=12)
+        self.average_entry.insert(0, "1")
+        self.average_entry.grid(row=1, column=1, padx=5)
+        ttk.Button(config_frame, text="Set", command=self.set_average).grid(row=1, column=2, padx=2)
+        ttk.Button(config_frame, text="Get", command=self.get_average).grid(row=1, column=3, padx=2)
+
 
         # Precision
         ttk.Label(config_frame, text="Precision:").grid(row=2, column=0, sticky="w")
@@ -90,7 +91,7 @@ class SCPIGui:
 
         # --- Cyclic Measurement Frame ---
         cycle_frame = ttk.LabelFrame(self.root, text="Cyclic Measurement")
-        cycle_frame.grid(row=4, column=0, padx=10, pady=5, sticky="ew")
+        cycle_frame.grid(row=4, column=0, padx=10, pady=5, sticky="ew", columnspan=2)
 
         self.measure_type = tk.StringVar(value="TEMP")
 
@@ -109,7 +110,7 @@ class SCPIGui:
 
         # --- Display Frame ---
         display_frame = ttk.LabelFrame(self.root, text="Display")
-        display_frame.grid(row=5, column=0, padx=10, pady=5, sticky="ew")
+        display_frame.grid(row=5, column=0, padx=10, pady=5, sticky="ew", columnspan=2)
 
         ttk.Label(display_frame, text="Brightness (0-100):").grid(row=0, column=0)
         self.brightness_entry = ttk.Entry(display_frame, width=10)
@@ -139,7 +140,7 @@ class SCPIGui:
 
         # --- System Frame ---
         system_frame = ttk.LabelFrame(self.root, text="System")
-        system_frame.grid(row=6, column=0, padx=10, pady=5, sticky="ew")
+        system_frame.grid(row=6, column=0, padx=10, pady=5, sticky="ew", columnspan=2)
 
         ttk.Button(system_frame, text="Enter Bootloader", command=self.enter_bootloader).grid(row=0, column=0, padx=2)
         ttk.Button(system_frame, text="Restart", command=self.restart).grid(row=0, column=1, padx=2)
@@ -150,7 +151,7 @@ class SCPIGui:
         ttk.Button(system_frame, text="Get ID", command=self.get_device_id).grid(row=1, column=2, padx=2)
 
         # --- Output Log ---
-        self.output = tk.Text(self.root, height=8, width=80)
+        self.output = tk.Text(self.root, height=8, width=60)
         self.output.grid(row=7, column=0, padx=10, pady=10, sticky="nsew")
         
         # Add scrollbar
@@ -369,26 +370,35 @@ class SCPIGui:
                 pass
 
     def set_nplc(self):
-        """Set measurement NPLC (1-255)"""
+        """Set measurement average count (1-255)"""
         try:
-            val = int(self.nplc_entry.get())
+            val = int(self.average_entry.get())
             if not (1 <= val <= 255):
-                raise ValueError("NPLC must be 1-255")
-            self.safe_write_log(f"SENSor:NPLC {val}")
+                raise ValueError("Average count must be 1-255")
+            self.safe_write_log(f"SENSor:AVErage {val}")
         except ValueError as e:
             messagebox.showerror("Error", str(e))
 
     def get_nplc(self):
-        """Get measurement NPLC"""
-        resp = self.safe_query_log("SENSor:NPLC?")
+        """Get measurement average count"""
+        resp = self.safe_query_log("SENSor:AVErage?")
         if resp:
             try:
                 val = int(resp)
-                self.nplc_entry.delete(0, tk.END)
-                self.nplc_entry.insert(0, str(val))
-                self.log(f"  → NPLC: {val}")
+                self.average_entry.delete(0, tk.END)
+                self.average_entry.insert(0, str(val))
+                self.log(f"  → Average: {val}")
             except ValueError:
                 pass
+
+    # Aliases for backward compatibility
+    def set_average(self):
+        """Alias for set_nplc - Set measurement average count"""
+        return self.set_nplc()
+
+    def get_average(self):
+        """Alias for get_nplc - Get measurement average count"""
+        return self.get_nplc()
 
     def set_precision(self):
         """Set measurement precision (LOW/MEDIUM/HIGH)"""
@@ -397,7 +407,7 @@ class SCPIGui:
 
     def get_precision(self):
         """Get measurement precision"""
-        resp = self.safe_query_log("SENSor:PRECision?")
+        resp = self.safe_query_log("SENSor:PRECision?").replace('"', "")
         if resp:
             self.precision_var.set(resp)
             self.log(f"  → Precision: {resp}")
