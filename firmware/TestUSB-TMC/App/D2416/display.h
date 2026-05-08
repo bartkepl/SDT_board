@@ -9,6 +9,7 @@
 #define D2416_DISPLAY_H_
 
 #include "main.h"
+#include <stddef.h>
 
 typedef enum {
 	eDisplaySource_Meas = 0,
@@ -52,8 +53,8 @@ void ConvertFloatTempToChar(float t, char *buf);
 void Display_SetState(uint8_t state);
 void DisplayClearAll(void);
 
-void Display_SetMeasurement(char *data);
-void Display_SetText(char *data);
+void Display_SetMeasurement(const char *data, size_t len);
+void Display_SetText(const char *data, size_t len);
 void Display_SelectSource(DisplaySource_t src);
 void DisplayOff(void);
 const char* Display_GetText(void);
@@ -61,5 +62,7 @@ DisplaySource_t Display_GetSource(void);
 
 uint8_t Display_GetBrightness(void);
 uint8_t Display_GetState(void);
+
+void Display_ShowError(int16_t code);
 
 #endif /* D2416_DISPLAY_H_ */

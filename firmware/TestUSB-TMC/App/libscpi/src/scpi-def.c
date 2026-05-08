@@ -9,11 +9,17 @@
 #include "scpi-def.h"
 #include "stm32c0xx_hal.h"
 #include <string.h>
+#include <math.h>
 #include <usbtmc_app.h>
 #include <display.h>
 #include <sensor.h>
+#include <sht45.h>
+#include <tmp117.h>
 #include <Utils.h>
 
+
+/* Push error code and return SCPI_RES_ERR in one step */
+#define SCPI_PUSH_ERR(ctx, code)  do { SCPI_ErrorPush((ctx), (code)); return SCPI_RES_ERR; } while(0)
 
 /* ===== SCPI callbacks ===== */
 
@@ -30,6 +36,12 @@ static scpi_result_t SCPI_SensorTemperatureQ(scpi_t *context);
 static scpi_result_t SCPI_SensorIdQ(scpi_t *context);
 static scpi_result_t SCPI_SensorHumidityQ(scpi_t *context);
 static scpi_result_t SCPI_SensorHeater(scpi_t *context);
+static scpi_result_t SCPI_SensorReadPeriodQ(scpi_t *context);
+static scpi_result_t SCPI_SensorReadPeriod(scpi_t *context);
+static scpi_result_t SCPI_SensorAverageQ(scpi_t *context);
+static scpi_result_t SCPI_SensorAverage(scpi_t *context);
+static scpi_result_t SCPI_SensorPrecisionQ(scpi_t *context);
+static scpi_result_t SCPI_SensorPrecision(scpi_t *context);
 static scpi_result_t SCPI_SystemBootloaderEnter(scpi_t *context);
 static scpi_result_t SCPI_SystemReset(scpi_t *context);
 static scpi_result_t SCPI_SystemIdQ(scpi_t *context);
@@ -41,6 +53,18 @@ static scpi_result_t SCPI_DisplaySource(scpi_t *context);
 static scpi_result_t SCPI_DisplaySourceQ(scpi_t *context);
 static scpi_result_t SCPI_DisplayText(scpi_t *context);
 static scpi_result_t SCPI_DisplayTextQ(scpi_t *context);
+
+// TMP117-specific and generalized handlers
+static scpi_result_t SCPI_SensorAlertHighQ(scpi_t *context);
+static scpi_result_t SCPI_SensorAlertHigh(scpi_t *context);
+static scpi_result_t SCPI_SensorAlertLowQ(scpi_t *context);
+static scpi_result_t SCPI_SensorAlertLow(scpi_t *context);
+static scpi_result_t SCPI_SensorAlertStatusQ(scpi_t *context);
+static scpi_result_t SCPI_SensorModeQ(scpi_t *context);
+static scpi_result_t SCPI_SensorMode(scpi_t *context);
+static scpi_result_t SCPI_SensorConvRateQ(scpi_t *context);
+static scpi_result_t SCPI_SensorConvRate(scpi_t *context);
+static scpi_result_t SCPI_SensorSoftReset(scpi_t *context);
 
 
 /* ===== SCPI command list ===== */
@@ -78,6 +102,12 @@ static const scpi_command_t scpi_commands[] = {
 	{.pattern = "SENSor:ID?", .callback = SCPI_SensorIdQ,},							// odczyt ID czujnika (uint32_t)
 	{.pattern = "SENSor:HUMidity?", .callback = SCPI_SensorHumidityQ,},				// odczyt zmierzonej wilgotności (float tylko dla SHT45)
 	{.pattern = "SENSor:HEATer", .callback = SCPI_SensorHeater,},					// uruchomienie grzałki wbudowanej w SHT45 (tylko dla SHT45)
+	{.pattern = "SENSor:READperiod?", .callback = SCPI_SensorReadPeriodQ,},		// odczyt okresu pomiarów [ms] (SHT45 only)
+	{.pattern = "SENSor:READperiod", .callback = SCPI_SensorReadPeriod,},			// ustawienie okresu pomiarów [ms] (SHT45 only)
+	{.pattern = "SENSor:AVErage?", .callback = SCPI_SensorAverageQ,},				// odczyt liczby pomiarów do uśredniania
+	{.pattern = "SENSor:AVErage", .callback = SCPI_SensorAverage,},					// ustawienie liczby pomiarów do uśredniania (1-255)
+	{.pattern = "SENSor:PRECision?", .callback = SCPI_SensorPrecisionQ,},			// odczyt dokładności (0=LOW, 1=MEDIUM, 2=HIGH) (SHT45 only)
+	{.pattern = "SENSor:PRECision", .callback = SCPI_SensorPrecision,},				// ustawienie dokładności (0=LOW, 1=MEDIUM, 2=HIGH) (SHT45 only)
 
 
 	{.pattern = "DISPlay:BRIGhtness?", .callback = SCPI_DisplayBrightnessQ,},			// Odczyt aktualnej jasności
@@ -89,6 +119,21 @@ static const scpi_command_t scpi_commands[] = {
 	{.pattern = "DISPlay:TEXT", .callback = SCPI_DisplayText,},						// Ustawienie textu na wyświetlacz
 	{.pattern = "DISPlay:TEXT?", .callback = SCPI_DisplayTextQ,},						// Odczytanie textu na wyświetlaczu
 
+	// TMP117 alert thresholds (°C)
+	{.pattern = "SENSor:ALERt:HIGH?",   .callback = SCPI_SensorAlertHighQ,  },
+	{.pattern = "SENSor:ALERt:HIGH",    .callback = SCPI_SensorAlertHigh,   },
+	{.pattern = "SENSor:ALERt:LOW?",    .callback = SCPI_SensorAlertLowQ,   },
+	{.pattern = "SENSor:ALERt:LOW",     .callback = SCPI_SensorAlertLow,    },
+	{.pattern = "SENSor:ALERt:STATus?", .callback = SCPI_SensorAlertStatusQ,},
+
+	// TMP117 conversion mode and rate
+	{.pattern = "SENSor:MODe?",         .callback = SCPI_SensorModeQ,       },
+	{.pattern = "SENSor:MODe",          .callback = SCPI_SensorMode,        },
+	{.pattern = "SENSor:CONVrate?",     .callback = SCPI_SensorConvRateQ,   },
+	{.pattern = "SENSor:CONVrate",      .callback = SCPI_SensorConvRate,    },
+
+	// Soft reset (both sensors)
+	{.pattern = "SENSor:SOFTReset",     .callback = SCPI_SensorSoftReset,   },
 
     SCPI_CMD_LIST_END
 };
@@ -132,6 +177,16 @@ void SCPI_Main_Input(const char *data, uint32_t len) {
 	SCPI_Input(&scpi_context, data, len);
 }
 
+void SCPI_Main_Poll(void) {
+	switch (Sensor_GetAndClearError()) {
+		case SENSOR_ERR_NOT_FOUND: SCPI_ErrorPush(&scpi_context, SCPI_ERROR_HARDWARE_MISSING); break;
+		case SENSOR_ERR_COMM:      SCPI_ErrorPush(&scpi_context, SCPI_ERROR_HARDWARE_ERROR);   break;
+		case SENSOR_ERR_TIMEOUT:   SCPI_ErrorPush(&scpi_context, SCPI_ERROR_TIME_OUT);         break;
+		case SENSOR_ERR_DATA:      SCPI_ErrorPush(&scpi_context, SCPI_ERROR_DATA_CORRUPT);     break;
+		default: break;
+	}
+}
+
 /* ===== SCPI callbacks ===== */
 
 static inline size_t SCPI_Write(scpi_t *context, const char *data, size_t len) {
@@ -140,9 +195,10 @@ static inline size_t SCPI_Write(scpi_t *context, const char *data, size_t len) {
 	return len;
 }
 
-static inline int SCPI_Error(scpi_t *context, int_fast16_t err) {
+static int SCPI_Error(scpi_t *context, int_fast16_t err) {
 	(void) context;
-	(void) err;
+	if (err != 0)
+		Display_ShowError((int16_t)err);
 	return 0;
 }
 
@@ -160,64 +216,76 @@ static inline scpi_result_t SCPI_Reset(scpi_t *context) {
  * Return SCPI_RES_OK
  */
 static scpi_result_t My_CoreTstQ(scpi_t *context) {
+	int32_t result = 0;
 
-	SCPI_ResultInt32(context, 0);
+	if (g_sensor.type == SENSOR_NONE || g_sensor.type == SENSOR_ERROR) {
+		result |= 1;
+		SCPI_ErrorPush(context, SCPI_ERROR_HARDWARE_MISSING);
+	}
 
+	SCPI_ResultInt32(context, result);
 	return SCPI_RES_OK;
 }
 
 static scpi_result_t SCPI_SensorTypeQ(scpi_t *context) {
 
 	switch (g_sensor.type) {
-	case SENSOR_SHT45:
-		SCPI_ResultText(context, "SHT45");
-		break;
-	case SENSOR_TMP117:
-		SCPI_ResultText(context, "TMP117");
-		break;
-	default:
-		SCPI_ResultText(context, "UNKNWN");
-		break;
+	case SENSOR_SHT45:  SCPI_ResultText(context, "SHT45");  break;
+	case SENSOR_TMP117: SCPI_ResultText(context, "TMP117"); break;
+	case SENSOR_DUAL:   SCPI_ResultText(context, "DUAL");   break;
+	default:            SCPI_ResultText(context, "UNKNWN"); break;
 	}
 	return SCPI_RES_OK;
 }
 
 static scpi_result_t SCPI_SensorTemperatureQ(scpi_t *context) {
+	if (g_sensor.type == SENSOR_ERROR)
+		SCPI_PUSH_ERR(context, SCPI_ERROR_HARDWARE_ERROR);
+	if (g_sensor.type == SENSOR_NONE)
+		SCPI_PUSH_ERR(context, SCPI_ERROR_HARDWARE_MISSING);
 	if (!g_sensor.ucValidFlag)
-		return SCPI_RES_ERR;
+		SCPI_PUSH_ERR(context, SCPI_ERROR_DATA_QUESTIONABLE);
 
 	SCPI_ResultFloat(context, g_sensor.fTemp);
-
 	return SCPI_RES_OK;
 }
 
 static scpi_result_t SCPI_SensorIdQ(scpi_t *context) {
+	if (g_sensor.type == SENSOR_ERROR)
+		SCPI_PUSH_ERR(context, SCPI_ERROR_HARDWARE_ERROR);
+	if (g_sensor.type == SENSOR_NONE)
+		SCPI_PUSH_ERR(context, SCPI_ERROR_HARDWARE_MISSING);
 	if (!g_sensor.ucValidFlag)
-		return SCPI_RES_ERR;
+		SCPI_PUSH_ERR(context, SCPI_ERROR_DATA_QUESTIONABLE);
 
 	SCPI_ResultInt32(context, (uint32_t) g_sensor.usSensorId);
-
 	return SCPI_RES_OK;
 }
 static scpi_result_t SCPI_SensorHumidityQ(scpi_t *context) {
+	if (g_sensor.type == SENSOR_ERROR)
+		SCPI_PUSH_ERR(context, SCPI_ERROR_HARDWARE_ERROR);
+	if (g_sensor.type == SENSOR_NONE)
+		SCPI_PUSH_ERR(context, SCPI_ERROR_HARDWARE_MISSING);
 	if (!g_sensor.ucValidFlag)
-		return SCPI_RES_ERR;
+		SCPI_PUSH_ERR(context, SCPI_ERROR_DATA_QUESTIONABLE);
 
-	if (g_sensor.type == SENSOR_SHT45) {
+	if (g_sensor.type == SENSOR_SHT45 || g_sensor.type == SENSOR_DUAL) {
 		SCPI_ResultFloat(context, g_sensor.fHum);
 	} else {
-		SCPI_ResultText(context, "NOT_SUPPORTED");
+		/* TMP117 has no humidity sensor — return SCPI NaN */
+		SCPI_ResultFloat(context, (float)NAN);
 	}
-
 	return SCPI_RES_OK;
 }
 
 static scpi_result_t SCPI_SensorHeater(scpi_t *context) {
+	if (g_sensor.type == SENSOR_TMP117)
+		SCPI_PUSH_ERR(context, SCPI_ERROR_SETTINGS_CONFLICT);
 	if (!g_sensor.ucValidFlag)
-		return SCPI_RES_ERR;
+		SCPI_PUSH_ERR(context, SCPI_ERROR_DATA_QUESTIONABLE);
 
-	Sensor_SHT45Heater();
-
+	// Request heater with default power level (20mW, 1s)
+	Sensor_SHT45_RequestHeater(0x1E);
 	return SCPI_RES_OK;
 }
 
@@ -304,16 +372,14 @@ static scpi_result_t SCPI_DisplayBrightnessQ(scpi_t *context) {
 	return SCPI_RES_OK;
 }
 static scpi_result_t SCPI_DisplayBrightness(scpi_t *context) {
-	uint32_t brightness = 101;
+	uint32_t brightness = 0;
 	if (!SCPI_ParamUInt32(context, &brightness, 1))
-		return SCPI_RES_ERR;
+		SCPI_PUSH_ERR(context, SCPI_ERROR_MISSING_PARAMETER);
 
-	if (brightness <= 100) {
-		Display_SetBrightness(brightness);
-	} else {
-		return SCPI_RES_ERR;
-	}
+	if (brightness > 100)
+		SCPI_PUSH_ERR(context, SCPI_ERROR_DATA_OUT_OF_RANGE);
 
+	Display_SetBrightness(brightness);
 	return SCPI_RES_OK;
 }
 
@@ -325,7 +391,7 @@ static scpi_result_t SCPI_DisplayStateQ(scpi_t *context) {
 static scpi_result_t SCPI_DisplayState(scpi_t *context) {
 	bool state = 1;
 	if (!SCPI_ParamBool(context, &state, 1))
-		return SCPI_RES_ERR;
+		SCPI_PUSH_ERR(context, SCPI_ERROR_MISSING_PARAMETER);
 
 	Display_SetState(state);
 	return SCPI_RES_OK;
@@ -334,10 +400,10 @@ static scpi_result_t SCPI_DisplayState(scpi_t *context) {
 static scpi_result_t SCPI_DisplaySource(scpi_t *context) {
 	uint32_t source = 0;
 	if (!SCPI_ParamUInt32(context, &source, 1))
-		return SCPI_RES_ERR;
+		SCPI_PUSH_ERR(context, SCPI_ERROR_MISSING_PARAMETER);
 
 	if (source >= eDisplaySource_SIZE)
-		return SCPI_RES_ERR;
+		SCPI_PUSH_ERR(context, SCPI_ERROR_DATA_OUT_OF_RANGE);
 
 	Display_SelectSource((DisplaySource_t) source);
 	return SCPI_RES_OK;
@@ -353,14 +419,14 @@ static scpi_result_t SCPI_DisplayText(scpi_t *context) {
 	size_t len;
 
 	if (!SCPI_ParamCharacters(context, &ptr, &len, TRUE))
-		return SCPI_RES_ERR;
+		SCPI_PUSH_ERR(context, SCPI_ERROR_MISSING_PARAMETER);
 
 	char buf[8];
 
 	memset(buf, ' ', 8);
 	memcpy(buf, ptr, len > 8 ? 8 : len);
 
-	Display_SetText(buf);
+	Display_SetText(buf, 8);
 
 	return SCPI_RES_OK;
 }
@@ -372,3 +438,241 @@ static scpi_result_t SCPI_DisplayTextQ(scpi_t *context) {
 	return SCPI_RES_OK;
 }
 
+static scpi_result_t SCPI_SensorReadPeriodQ(scpi_t *context) {
+	switch (g_sensor.type) {
+	case SENSOR_SHT45:
+	case SENSOR_DUAL:
+		SCPI_ResultInt32(context, Sensor_SHT45_GetReadPeriod());
+		break;
+	case SENSOR_TMP117:
+		SCPI_ResultInt32(context, Sensor_TMP117_GetReadPeriod());
+		break;
+	default:
+		SCPI_PUSH_ERR(context, SCPI_ERROR_HARDWARE_MISSING);
+	}
+	return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_SensorReadPeriod(scpi_t *context) {
+	if (g_sensor.type == SENSOR_NONE)
+		SCPI_PUSH_ERR(context, SCPI_ERROR_HARDWARE_MISSING);
+	if (g_sensor.type == SENSOR_ERROR)
+		SCPI_PUSH_ERR(context, SCPI_ERROR_HARDWARE_ERROR);
+
+	uint32_t periodMs = 500;
+	if (!SCPI_ParamUInt32(context, &periodMs, 1))
+		SCPI_PUSH_ERR(context, SCPI_ERROR_MISSING_PARAMETER);
+
+	if (periodMs < 50 || periodMs > 60000)
+		SCPI_PUSH_ERR(context, SCPI_ERROR_DATA_OUT_OF_RANGE);
+
+	if (g_sensor.type == SENSOR_SHT45 || g_sensor.type == SENSOR_DUAL)
+		Sensor_SHT45_SetReadPeriod((uint16_t)periodMs);
+	if (g_sensor.type == SENSOR_TMP117)
+		Sensor_TMP117_SetReadPeriod((uint16_t)periodMs);
+	return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_SensorAverageQ(scpi_t *context) {
+	static const uint8_t tmp117AvgMap[] = {1, 8, 32, 64};
+
+	switch (g_sensor.type) {
+	case SENSOR_SHT45:
+	case SENSOR_DUAL:
+		SCPI_ResultInt32(context, Sensor_SHT45_GetAverageCount());
+		break;
+	case SENSOR_TMP117:
+	{
+		uint8_t avg = Sensor_TMP117_GetAvgHW();
+		SCPI_ResultInt32(context, tmp117AvgMap[avg < 4u ? avg : 0u]);
+		break;
+	}
+	default:
+		SCPI_PUSH_ERR(context, SCPI_ERROR_HARDWARE_MISSING);
+	}
+	return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_SensorAverage(scpi_t *context) {
+	if (g_sensor.type == SENSOR_NONE)
+		SCPI_PUSH_ERR(context, SCPI_ERROR_HARDWARE_MISSING);
+	if (g_sensor.type == SENSOR_ERROR)
+		SCPI_PUSH_ERR(context, SCPI_ERROR_HARDWARE_ERROR);
+
+	uint32_t count = 1;
+	if (!SCPI_ParamUInt32(context, &count, 1))
+		SCPI_PUSH_ERR(context, SCPI_ERROR_MISSING_PARAMETER);
+
+	if (g_sensor.type == SENSOR_SHT45 || g_sensor.type == SENSOR_DUAL)
+	{
+		if (count < 1 || count > 255)
+			SCPI_PUSH_ERR(context, SCPI_ERROR_DATA_OUT_OF_RANGE);
+		Sensor_SHT45_SetAverageCount((uint8_t)count);
+	}
+	else if (g_sensor.type == SENSOR_TMP117)
+	{
+		/* TMP117 hardware averaging: only 1, 8, 32, 64 are valid */
+		TMP117_Averaging_t avg;
+		if      (count == 1u)  avg = TMP117_AVG_1;
+		else if (count == 8u)  avg = TMP117_AVG_8;
+		else if (count == 32u) avg = TMP117_AVG_32;
+		else if (count == 64u) avg = TMP117_AVG_64;
+		else SCPI_PUSH_ERR(context, SCPI_ERROR_DATA_OUT_OF_RANGE);
+		Sensor_TMP117_SetAvgHW((uint8_t)avg);
+	}
+	return SCPI_RES_OK;
+}
+
+static const scpi_choice_def_t precision_options[] = {
+	{ "LOW", SHT45_PRECISION_LOW },
+	{ "MEDIUM", SHT45_PRECISION_MEDIUM },
+	{ "HIGH", SHT45_PRECISION_HIGH },
+	SCPI_CHOICE_LIST_END
+};
+
+static scpi_result_t SCPI_SensorPrecisionQ(scpi_t *context) {
+	if (g_sensor.type == SENSOR_TMP117) {
+		/* TMP117 has no software precision selection */
+		SCPI_ResultFloat(context, (float)NAN);
+		return SCPI_RES_OK;
+	}
+	if (g_sensor.type != SENSOR_SHT45 && g_sensor.type != SENSOR_DUAL)
+		SCPI_PUSH_ERR(context, SCPI_ERROR_HARDWARE_MISSING);
+
+	switch ((SHT45_Precision_t)Sensor_SHT45_GetMeasurementPrecision()) {
+		case SHT45_PRECISION_LOW:    SCPI_ResultText(context, "LOW");    break;
+		case SHT45_PRECISION_MEDIUM: SCPI_ResultText(context, "MEDIUM"); break;
+		case SHT45_PRECISION_HIGH:   SCPI_ResultText(context, "HIGH");   break;
+		default: SCPI_PUSH_ERR(context, SCPI_ERROR_HARDWARE_ERROR);
+	}
+	return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_SensorPrecision(scpi_t *context) {
+	if (g_sensor.type == SENSOR_TMP117)
+		SCPI_PUSH_ERR(context, SCPI_ERROR_SETTINGS_CONFLICT);
+	if (g_sensor.type != SENSOR_SHT45 && g_sensor.type != SENSOR_DUAL)
+		SCPI_PUSH_ERR(context, SCPI_ERROR_HARDWARE_MISSING);
+
+	int32_t precision = SHT45_PRECISION_HIGH;
+	if (!SCPI_ParamChoice(context, precision_options, &precision, TRUE))
+		SCPI_PUSH_ERR(context, SCPI_ERROR_MISSING_PARAMETER);
+
+	Sensor_SHT45_SetMeasurementPrecision((uint8_t)precision);
+	return SCPI_RES_OK;
+}
+
+//------------------------------------------------------------------//
+// TMP117-specific and generalized handlers
+//------------------------------------------------------------------//
+
+static const scpi_choice_def_t mode_options[] = {
+	{ "CONTinuous", TMP117_MODE_CONTINUOUS },
+	{ "SHUTdown",   TMP117_MODE_SHUTDOWN   },
+	{ "ONESHot",    TMP117_MODE_ONESHOT    },
+	SCPI_CHOICE_LIST_END
+};
+
+#define TMP117_GUARD() \
+	do { if (g_sensor.type != SENSOR_TMP117 && g_sensor.type != SENSOR_DUAL) \
+		SCPI_PUSH_ERR(context, SCPI_ERROR_SETTINGS_CONFLICT); } while(0)
+
+static scpi_result_t SCPI_SensorAlertHighQ(scpi_t *context) {
+	TMP117_GUARD();
+	SCPI_ResultFloat(context, Sensor_TMP117_GetAlertHigh());
+	return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_SensorAlertHigh(scpi_t *context) {
+	TMP117_GUARD();
+	float threshold = 0.0f;
+	if (!SCPI_ParamFloat(context, &threshold, TRUE))
+		SCPI_PUSH_ERR(context, SCPI_ERROR_MISSING_PARAMETER);
+	/* Operational range -55°C to +150°C */
+	if (threshold < -55.0f || threshold > 150.0f)
+		SCPI_PUSH_ERR(context, SCPI_ERROR_DATA_OUT_OF_RANGE);
+	Sensor_TMP117_SetAlertHigh(threshold);
+	return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_SensorAlertLowQ(scpi_t *context) {
+	TMP117_GUARD();
+	SCPI_ResultFloat(context, Sensor_TMP117_GetAlertLow());
+	return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_SensorAlertLow(scpi_t *context) {
+	TMP117_GUARD();
+	float threshold = 0.0f;
+	if (!SCPI_ParamFloat(context, &threshold, TRUE))
+		SCPI_PUSH_ERR(context, SCPI_ERROR_MISSING_PARAMETER);
+	if (threshold < -55.0f || threshold > 150.0f)
+		SCPI_PUSH_ERR(context, SCPI_ERROR_DATA_OUT_OF_RANGE);
+	Sensor_TMP117_SetAlertLow(threshold);
+	return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_SensorAlertStatusQ(scpi_t *context) {
+	TMP117_GUARD();
+	uint8_t status = Sensor_TMP117_GetAlertStatus();
+	if      (status & 0x02u) SCPI_ResultText(context, "HIGH");
+	else if (status & 0x01u) SCPI_ResultText(context, "LOW");
+	else if (status & 0x04u) SCPI_ResultText(context, "READY");
+	else                     SCPI_ResultText(context, "NONE");
+	return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_SensorModeQ(scpi_t *context) {
+	TMP117_GUARD();
+	switch ((TMP117_Mode_t)Sensor_TMP117_GetMode()) {
+	case TMP117_MODE_CONTINUOUS: SCPI_ResultText(context, "CONTINUOUS"); break;
+	case TMP117_MODE_SHUTDOWN:   SCPI_ResultText(context, "SHUTDOWN");   break;
+	case TMP117_MODE_ONESHOT:    SCPI_ResultText(context, "ONESHOT");    break;
+	default: return SCPI_RES_ERR;
+	}
+	return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_SensorMode(scpi_t *context) {
+	TMP117_GUARD();
+	int32_t mode = TMP117_MODE_CONTINUOUS;
+	if (!SCPI_ParamChoice(context, mode_options, &mode, TRUE))
+		SCPI_PUSH_ERR(context, SCPI_ERROR_MISSING_PARAMETER);
+	Sensor_TMP117_SetMode((uint8_t)mode);
+	return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_SensorConvRateQ(scpi_t *context) {
+	TMP117_GUARD();
+	SCPI_ResultInt32(context, Sensor_TMP117_GetConvRate());
+	return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_SensorConvRate(scpi_t *context) {
+	TMP117_GUARD();
+	uint32_t rate = 4;
+	if (!SCPI_ParamUInt32(context, &rate, TRUE))
+		SCPI_PUSH_ERR(context, SCPI_ERROR_MISSING_PARAMETER);
+	if (rate > 7u)
+		SCPI_PUSH_ERR(context, SCPI_ERROR_DATA_OUT_OF_RANGE);
+	Sensor_TMP117_SetConvRate((uint8_t)rate);
+	return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_SensorSoftReset(scpi_t *context) {
+	switch (g_sensor.type) {
+	case SENSOR_TMP117:
+		Sensor_TMP117_RequestSoftReset();
+		break;
+	case SENSOR_SHT45:
+		Sensor_SHT45_RequestSoftReset();
+		break;
+	case SENSOR_DUAL:
+		Sensor_TMP117_RequestSoftReset();
+		Sensor_SHT45_RequestSoftReset();
+		break;
+	default:
+		SCPI_PUSH_ERR(context, SCPI_ERROR_HARDWARE_MISSING);
+	}
+	return SCPI_RES_OK;
+}

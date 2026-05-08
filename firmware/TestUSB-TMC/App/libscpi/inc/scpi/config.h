@@ -83,8 +83,9 @@ extern "C" {
  * For small systems, full set of errors will occupy large ammount of data
  * It is enabled by default on full blown systems and disabled on limited bare metal systems
  */
+/* Enable full SCPI error code set for hardware-specific error reporting */
 #ifndef USE_FULL_ERROR_LIST
-#define USE_FULL_ERROR_LIST SYSTEM_TYPE
+#define USE_FULL_ERROR_LIST 1
 #endif
 
 /**

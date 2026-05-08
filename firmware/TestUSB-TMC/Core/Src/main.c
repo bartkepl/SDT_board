@@ -50,6 +50,8 @@
 CRC_HandleTypeDef hcrc;
 
 I2C_HandleTypeDef hi2c1;
+DMA_HandleTypeDef hdma_i2c1_rx;
+DMA_HandleTypeDef hdma_i2c1_tx;
 
 TIM_HandleTypeDef htim3;
 
@@ -62,6 +64,7 @@ PCD_HandleTypeDef hpcd_USB_DRD_FS;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_USB_PCD_Init(void);
@@ -104,6 +107,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_I2C1_Init();
   MX_TIM3_Init();
   MX_USB_PCD_Init();
@@ -127,6 +131,7 @@ int main(void)
 	  tud_task();
 	  usbtmc_app_task_iter();
 	  Sensor_Task();
+	  SCPI_Main_Poll();
 	  Display_task();
     /* USER CODE END WHILE */
 
@@ -363,6 +368,25 @@ static void MX_USB_PCD_Init(void)
 }
 
 /**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Channel1_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+  /* DMA1_Channel2_3_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel2_3_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel2_3_IRQn);
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -418,6 +442,47 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
+/**
+ * @brief I2C Master Transmission Complete Callback
+ * @param hi2c I2C handle
+ * @retval None
+ */
+void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *hi2c)
+{
+    // Route to Sensor I2C TX complete handler
+    if (hi2c->Instance == I2C1)
+    {
+        Sensor_I2C_TxComplete_Callback();
+    }
+}
+
+/**
+ * @brief I2C Master Reception Complete Callback
+ * @param hi2c I2C handle
+ * @retval None
+ */
+void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c)
+{
+    // Route to Sensor I2C RX complete handler
+    if (hi2c->Instance == I2C1)
+    {
+        Sensor_I2C_RxComplete_Callback();
+    }
+}
+
+/**
+ * @brief I2C Error Callback
+ * @param hi2c I2C handle
+ * @retval None
+ */
+void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c)
+{
+    // Route to Sensor I2C error handler
+    if (hi2c->Instance == I2C1)
+    {
+        Sensor_I2C_Error_Callback();
+    }
+}
 /* USER CODE END 4 */
 
 /**
