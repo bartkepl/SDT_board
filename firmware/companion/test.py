@@ -196,11 +196,24 @@ class SCPIGui:
         ttk.Radiobutton(system_frame, text="Long",  variable=self.id_type, value="LONG").grid(row=1, column=1)
         ttk.Button(system_frame, text="Get ID", command=self.get_device_id).grid(row=1, column=2, padx=2)
 
+        # --- SCPI Error Queue ---
+        err_frame = ttk.LabelFrame(self.root, text="SCPI Error Queue")
+        err_frame.grid(row=8, column=0, padx=10, pady=5, sticky="ew", columnspan=2)
+
+        ttk.Button(err_frame, text="Count (SYST:ERR:COUN?)",
+                   command=self.get_error_count).grid(row=0, column=0, padx=4, pady=3)
+        ttk.Button(err_frame, text="Read All Errors",
+                   command=self.read_error_queue).grid(row=0, column=1, padx=4)
+        ttk.Button(err_frame, text="Clear All (*CLS)",
+                   command=self.clear_errors).grid(row=0, column=2, padx=4)
+        ttk.Button(err_frame, text="Self-test (*TST?)",
+                   command=self.run_self_test).grid(row=0, column=3, padx=4)
+
         # --- Output log ---
         self.output = tk.Text(self.root, height=8, width=60)
-        self.output.grid(row=8, column=0, padx=10, pady=10, sticky="nsew")
+        self.output.grid(row=9, column=0, padx=10, pady=10, sticky="nsew")
         scrollbar = ttk.Scrollbar(self.root, orient="vertical", command=self.output.yview)
-        scrollbar.grid(row=8, column=1, sticky="ns")
+        scrollbar.grid(row=9, column=1, sticky="ns")
         self.output.config(yscrollcommand=scrollbar.set)
 
     def _update_conv_rate_label(self, *_):
@@ -366,6 +379,52 @@ class SCPIGui:
         if messagebox.askyesno("Confirm", "Device will restart. Continue?"):
             self.safe_write_log("SYSTem:RST")
             self.device = None
+
+    # ------------------------------------------------------------------ #
+    # SCPI Error Queue
+    # ------------------------------------------------------------------ #
+
+    def get_error_count(self):
+        resp = self.safe_query_log("SYSTem:ERRor:COUNt?")
+        if resp:
+            try:
+                self.log(f"  → Pending errors: {int(resp)}")
+            except ValueError:
+                pass
+
+    def read_error_queue(self):
+        """Read and log all errors until queue empty (0,'No error')."""
+        errors_found = 0
+        while True:
+            resp = self.safe_query_log("SYSTem:ERRor?")
+            if resp is None:
+                break
+            code_str = resp.split(",")[0].strip()
+            try:
+                if int(code_str) == 0:
+                    if errors_found == 0:
+                        self.log("  → Error queue is empty")
+                    break
+            except ValueError:
+                break
+            errors_found += 1
+            self.log(f"  → [{errors_found}] {resp}")
+        if errors_found:
+            self.log(f"  → {errors_found} error(s) read and removed from queue")
+
+    def clear_errors(self):
+        self.safe_write_log("*CLS")
+        self.log("  → Status registers and error queue cleared")
+
+    def run_self_test(self):
+        resp = self.safe_query_log("*TST?")
+        if resp:
+            try:
+                result = int(resp)
+                status = "PASS" if result == 0 else f"FAIL (code {result})"
+                self.log(f"  → Self-test result: {status}")
+            except ValueError:
+                pass
 
     # ------------------------------------------------------------------ #
     # Sensor — universal

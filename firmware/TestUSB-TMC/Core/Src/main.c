@@ -131,6 +131,7 @@ int main(void)
 	  tud_task();
 	  usbtmc_app_task_iter();
 	  Sensor_Task();
+	  SCPI_Main_Poll();
 	  Display_task();
     /* USER CODE END WHILE */
 

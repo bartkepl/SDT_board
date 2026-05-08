@@ -33,7 +33,7 @@ SHT45_Data_t g_sht45 = {0};
 SHT45_Config_t g_sht45_config = {
     .eMeasPrecision = SHT45_PRECISION_HIGH,
     .eHeaterMode = SHT45_HEATER_20MW_1S,
-    .readPeriodMs = 500,
+    .readPeriodMs = 1000,
     .averageCount = 1,
 };
 

@@ -38,6 +38,16 @@ typedef struct
 
 extern SensorData_t g_sensor;
 
+typedef enum {
+    SENSOR_ERR_NONE = 0,
+    SENSOR_ERR_NOT_FOUND,   /* czujnik nie wykryty podczas init -> SCPI -241 */
+    SENSOR_ERR_COMM,        /* blad magistrali I2C -> SCPI -240 */
+    SENSOR_ERR_TIMEOUT,     /* timeout DMA/I2C -> SCPI -365 */
+    SENSOR_ERR_DATA,        /* blad CRC lub dane niewazne -> SCPI -230 */
+} SensorError_t;
+
+SensorError_t Sensor_GetAndClearError(void);
+
 // I2C bus arbitration for DUAL sensor mode
 #define I2C_SENSOR_NONE   0u
 #define I2C_SENSOR_TMP117 1u

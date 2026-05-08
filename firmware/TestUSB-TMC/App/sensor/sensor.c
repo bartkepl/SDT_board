@@ -18,6 +18,21 @@ volatile uint8_t g_i2c_active_sensor = I2C_SENSOR_NONE;
 static I2C_HandleTypeDef *sensor_i2c;
 static uint16_t sTaskSensorTimer = 0;
 
+static volatile SensorError_t s_pending_error = SENSOR_ERR_NONE;
+static uint8_t s_tmp117_was_valid = 0;
+static uint8_t s_sht45_was_valid  = 0;
+
+static void Sensor_SetPendingError(SensorError_t err) {
+    if (s_pending_error == SENSOR_ERR_NONE)
+        s_pending_error = err;
+}
+
+SensorError_t Sensor_GetAndClearError(void) {
+    SensorError_t err = s_pending_error;
+    s_pending_error = SENSOR_ERR_NONE;
+    return err;
+}
+
 #define SENSOR_PERIOD_MS 1000
 #define SENSOR_DETECT_TIMEOUT_MS 5000
 
@@ -86,6 +101,7 @@ void Sensor_Task(void)
         {
             g_sensor.ucInitializedFlag = true;
             g_sensor.type = SENSOR_ERROR;
+            Sensor_SetPendingError(SENSOR_ERR_NOT_FOUND);
         }
         
         return;
@@ -97,7 +113,11 @@ void Sensor_Task(void)
         case SENSOR_TMP117:
         {
             TMP117_Task();
-            
+
+            if (s_tmp117_was_valid && !g_tmp117.ucValidFlag && g_tmp117.ucInitializedFlag)
+                Sensor_SetPendingError(SENSOR_ERR_COMM);
+            s_tmp117_was_valid = g_tmp117.ucValidFlag;
+
             if (g_tmp117.ucValidFlag)
             {
                 g_sensor.fTemp = g_tmp117.fTemp;
@@ -121,7 +141,11 @@ void Sensor_Task(void)
         case SENSOR_SHT45:
         {
             SHT45_Task();
-            
+
+            if (s_sht45_was_valid && !g_sht45.ucValidFlag && g_sht45.ucInitializedFlag)
+                Sensor_SetPendingError(SENSOR_ERR_DATA);
+            s_sht45_was_valid = g_sht45.ucValidFlag;
+
             if (g_sht45.ucValidFlag)
             {
                 g_sensor.fTemp = g_sht45.fTemp;
@@ -145,8 +169,15 @@ void Sensor_Task(void)
         case SENSOR_DUAL:
         {
             TMP117_Task();
+            if (s_tmp117_was_valid && !g_tmp117.ucValidFlag && g_tmp117.ucInitializedFlag)
+                Sensor_SetPendingError(SENSOR_ERR_COMM);
+            s_tmp117_was_valid = g_tmp117.ucValidFlag;
+
             SHT45_Task();
-            
+            if (s_sht45_was_valid && !g_sht45.ucValidFlag && g_sht45.ucInitializedFlag)
+                Sensor_SetPendingError(SENSOR_ERR_DATA);
+            s_sht45_was_valid = g_sht45.ucValidFlag;
+
             // For dual sensor mode, use SHT45 data (has temp and humidity)
             if (g_sht45.ucValidFlag)
             {

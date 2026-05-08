@@ -63,4 +63,6 @@ DisplaySource_t Display_GetSource(void);
 uint8_t Display_GetBrightness(void);
 uint8_t Display_GetState(void);
 
+void Display_ShowError(int16_t code);
+
 #endif /* D2416_DISPLAY_H_ */

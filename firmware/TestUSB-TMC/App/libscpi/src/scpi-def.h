@@ -20,5 +20,6 @@ extern scpi_t scpi_context;
 
 void SCPI_Main_Init(void);
 void SCPI_Main_Input(const char *data, uint32_t len);
+void SCPI_Main_Poll(void);
 
 #endif /* INC_SCPI_DEF_H_ */
