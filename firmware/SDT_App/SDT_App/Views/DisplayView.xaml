@@ -1,0 +1,132 @@
+﻿<UserControl x:Class="SDT_App.Views.DisplayView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
+             xmlns:vm="clr-namespace:SDT_App.ViewModels"
+             d:DataContext="{d:DesignInstance Type=vm:DisplayViewModel}"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="10" MaxWidth="640">
+
+            <!-- Brightness -->
+            <GroupBox Header="Brightness" Margin="0,0,0,8">
+                <Grid Margin="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="40"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="4"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Slider Grid.Column="0" Minimum="1" Maximum="100"
+                            Value="{Binding Brightness}"
+                            IsEnabled="{Binding IsConnected}"
+                            VerticalAlignment="Center"
+                            TickFrequency="5" IsSnapToTickEnabled="False"/>
+                    <TextBlock Grid.Column="2" Text="{Binding BrightnessLabel}"
+                               VerticalAlignment="Center" TextAlignment="Right"
+                               FontFamily="Consolas"/>
+                    <Button Grid.Column="4" Content="Set"
+                            Command="{Binding SetBrightnessCommand}"
+                            IsEnabled="{Binding IsConnected}"/>
+                    <Button Grid.Column="6" Content="Get"
+                            Command="{Binding GetBrightnessCommand}"
+                            IsEnabled="{Binding IsConnected}"/>
+                </Grid>
+            </GroupBox>
+
+            <!-- Display State -->
+            <GroupBox Header="Display State" Margin="0,0,0,8">
+                <Grid Margin="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="4"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                        <RadioButton Content="ON"  IsChecked="{Binding DisplayOn}"
+                                     IsEnabled="{Binding IsConnected}" Margin="0,0,16,0"/>
+                        <RadioButton Content="OFF" IsEnabled="{Binding IsConnected}"
+                                     IsChecked="{Binding DisplayOn, Converter={StaticResource BoolInverse}}"/>
+                    </StackPanel>
+                    <Button Grid.Column="2" Content="Set State"
+                            Command="{Binding SetStateCommand}"
+                            IsEnabled="{Binding IsConnected}"/>
+                    <Button Grid.Column="4" Content="Get State"
+                            Command="{Binding GetStateCommand}"
+                            IsEnabled="{Binding IsConnected}"/>
+                </Grid>
+            </GroupBox>
+
+            <!-- Display Source -->
+            <GroupBox Header="Display Source" Margin="0,0,0,8">
+                <Grid Margin="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="4"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                        <RadioButton Content="Measurement (0)" Margin="0,0,16,0"
+                                     IsChecked="{Binding SourceMeasurement}"
+                                     IsEnabled="{Binding IsConnected}"/>
+                        <RadioButton Content="User Text (1)"
+                                     IsChecked="{Binding SourceMeasurement, Converter={StaticResource BoolInverse}}"
+                                     IsEnabled="{Binding IsConnected}"/>
+                    </StackPanel>
+                    <Button Grid.Column="2" Content="Set Source"
+                            Command="{Binding SetSourceCommand}"
+                            IsEnabled="{Binding IsConnected}"/>
+                    <Button Grid.Column="4" Content="Get Source"
+                            Command="{Binding GetSourceCommand}"
+                            IsEnabled="{Binding IsConnected}"/>
+                </Grid>
+            </GroupBox>
+
+            <!-- Display Text -->
+            <GroupBox Header="Display Text (max 8 characters)">
+                <Grid Margin="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="8"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="4"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBox Grid.Row="0" Grid.Column="0"
+                             Text="{Binding DisplayText, UpdateSourceTrigger=PropertyChanged}"
+                             MaxLength="8"
+                             FontFamily="Consolas" FontSize="16"
+                             IsEnabled="{Binding IsConnected}"/>
+                    <Button Grid.Row="0" Grid.Column="2" Content="Write"
+                            Command="{Binding WriteTextCommand}"
+                            IsEnabled="{Binding IsConnected}"
+                            Style="{StaticResource MahApps.Styles.Button.Square.Accent}"/>
+                    <Button Grid.Row="0" Grid.Column="4" Content="Read"
+                            Command="{Binding ReadTextCommand}"
+                            IsEnabled="{Binding IsConnected}"/>
+
+                    <TextBlock Grid.Row="2" Grid.ColumnSpan="5"
+                               Text="{Binding CurrentText, StringFormat='Current display text: {0}'}"
+                               FontFamily="Consolas" Opacity="0.7"/>
+                </Grid>
+            </GroupBox>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

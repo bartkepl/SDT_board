@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "dgSpecHash": "SAqEHu9guY0=",
+  "success": true,
+  "projectFilePath": "d:\\Pliki\\OtherWorkspace\\KiCad\\SDT_board-main\\firmware\\SDT_App\\SDT_App\\SDT_App.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\bniemiec\\.nuget\\packages\\communitytoolkit.mvvm\\8.3.2\\communitytoolkit.mvvm.8.3.2.nupkg.sha512",
+    "C:\\Users\\bniemiec\\.nuget\\packages\\controlzex\\4.4.0\\controlzex.4.4.0.nupkg.sha512",
+    "C:\\Users\\bniemiec\\.nuget\\packages\\ivifoundation.visa\\8.0.2\\ivifoundation.visa.8.0.2.nupkg.sha512",
+    "C:\\Users\\bniemiec\\.nuget\\packages\\mahapps.metro\\2.4.10\\mahapps.metro.2.4.10.nupkg.sha512",
+    "C:\\Users\\bniemiec\\.nuget\\packages\\mahapps.metro.iconpacks.material\\4.11.0\\mahapps.metro.iconpacks.material.4.11.0.nupkg.sha512",
+    "C:\\Users\\bniemiec\\.nuget\\packages\\microsoft.xaml.behaviors.wpf\\1.1.19\\microsoft.xaml.behaviors.wpf.1.1.19.nupkg.sha512",
+    "C:\\Users\\bniemiec\\.nuget\\packages\\oxyplot.core\\2.1.2\\oxyplot.core.2.1.2.nupkg.sha512",
+    "C:\\Users\\bniemiec\\.nuget\\packages\\oxyplot.wpf\\2.1.2\\oxyplot.wpf.2.1.2.nupkg.sha512",
+    "C:\\Users\\bniemiec\\.nuget\\packages\\oxyplot.wpf.shared\\2.1.2\\oxyplot.wpf.shared.2.1.2.nupkg.sha512",
+    "C:\\Users\\bniemiec\\.nuget\\packages\\system.text.json\\4.7.2\\system.text.json.4.7.2.nupkg.sha512"
+  ],
+  "logs": []
+}

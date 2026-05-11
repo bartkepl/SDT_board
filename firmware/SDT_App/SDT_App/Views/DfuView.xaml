@@ -1,0 +1,145 @@
+﻿<UserControl x:Class="SDT_App.Views.DfuView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
+             xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
+             xmlns:vm="clr-namespace:SDT_App.ViewModels"
+             d:DataContext="{d:DesignInstance Type=vm:DfuViewModel}"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d">
+
+    <Grid Margin="10">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="340"/>
+            <ColumnDefinition Width="8"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Left: Config -->
+        <StackPanel Grid.Column="0">
+
+            <!-- Firmware File -->
+            <GroupBox Header="Firmware File (.bin / .hex / .elf)" Margin="0,0,0,8">
+                <Grid Margin="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="4"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox Grid.Column="0" Text="{Binding FirmwarePath}"
+                             mah:TextBoxHelper.Watermark="Path to firmware file..."
+                             FontSize="11"/>
+                    <Button Grid.Column="2" Content="Browse..."
+                            Command="{Binding BrowseFileCommand}"/>
+                </Grid>
+            </GroupBox>
+
+            <!-- DFU Tool -->
+            <GroupBox Header="DFU Flash Tool" Margin="0,0,0,8">
+                <StackPanel Margin="8">
+                    <Border CornerRadius="4" Padding="8,6" Margin="0,0,0,8">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="#33AA6600"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ToolFound}" Value="True">
+                                        <Setter Property="Background" Value="#2244BB66"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="{Binding ToolStatusText}" TextWrapping="Wrap"
+                                   FontFamily="Consolas" FontSize="11">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="#FFDD66"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding ToolFound}" Value="True">
+                                            <Setter Property="Foreground" Value="#44CC77"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Border>
+                    <Button Content="Detect DFU Tool" Command="{Binding DetectToolCommand}"/>
+                    <TextBlock Margin="0,8,0,0" TextWrapping="Wrap" FontSize="11" Opacity="0.65"
+                               Text="Install dfu-util (via winget, MSYS2) or STM32CubeProgrammer to enable flashing."/>
+                </StackPanel>
+            </GroupBox>
+
+            <!-- Flash -->
+            <GroupBox Header="Flash Firmware">
+                <StackPanel Margin="8">
+                    <Button Command="{Binding FlashCommand}"
+                            IsEnabled="{Binding IsFlashing, Converter={StaticResource BoolInverse}}"
+                            Margin="0,0,0,8"
+                            Style="{StaticResource MahApps.Styles.Button.Square.Accent}">
+                        <StackPanel Orientation="Horizontal">
+                            <iconPacks:PackIconMaterial Kind="Download" Width="14" Height="14" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <TextBlock Text="Flash Firmware" VerticalAlignment="Center" FontSize="13"/>
+                        </StackPanel>
+                    </Button>
+                    <mah:MetroProgressBar IsIndeterminate="{Binding IsFlashing}"
+                                          Height="6" Margin="0,0,0,8"/>
+                    <TextBlock Text="{Binding FlashStepText}"
+                               FontFamily="Consolas" FontSize="12" TextWrapping="Wrap">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="#AAAAAA"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsFlashing}" Value="True">
+                                        <Setter Property="Foreground" Value="#FFDD66"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <TextBlock Margin="0,8,0,0" FontSize="10" Opacity="0.55" TextWrapping="Wrap"
+                               Text="Sequence: 1) Enter bootloader  2) Wait 3 s  3) Flash via dfu-util or STM32CubeProgrammer  4) Device restarts automatically"/>
+                </StackPanel>
+            </GroupBox>
+
+        </StackPanel>
+
+        <!-- Right: Flash Log -->
+        <GroupBox Grid.Column="2" Header="Flash Log">
+            <DockPanel>
+                <Button DockPanel.Dock="Top" HorizontalAlignment="Right"
+                        Content="Clear" Command="{Binding ClearFlashLogCommand}"
+                        Margin="4" Width="60" Height="24"/>
+                <ListBox x:Name="FlashLogList"
+                         ItemsSource="{Binding FlashLogLines}"
+                         FontFamily="Consolas" FontSize="11"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                         VirtualizingPanel.IsVirtualizing="True">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="Padding" Value="2,1"/>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" TextWrapping="NoWrap">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="#CCCCCC"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding}" Value="{x:Null}">
+                                                <Setter Property="Foreground" Value="#888888"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+        </GroupBox>
+
+    </Grid>
+</UserControl>

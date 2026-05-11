@@ -1,0 +1,143 @@
+﻿<UserControl x:Class="SDT_App.Views.Tmp117View"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
+             xmlns:vm="clr-namespace:SDT_App.ViewModels"
+             d:DataContext="{d:DesignInstance Type=vm:Tmp117ViewModel}"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="10" MaxWidth="700">
+
+            <!-- Info banner -->
+            <Border Background="#33AA6600" CornerRadius="4" Padding="10,6" Margin="0,0,0,10">
+                <TextBlock TextWrapping="Wrap" Foreground="#FFDDAA"
+                           Text="These settings apply to TMP117 sensor only. Commands will have no effect if a SHT45 is connected."/>
+            </Border>
+
+            <!-- Alert Thresholds -->
+            <GroupBox Header="Alert Thresholds" Margin="0,0,0,8">
+                <Grid Margin="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="8"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="8"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="130"/>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="4"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Alert High -->
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Alert HIGH [Â°C]:" VerticalAlignment="Center"/>
+                    <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding AlertHighInput}"
+                             IsEnabled="{Binding IsConnected}"/>
+                    <TextBlock Grid.Row="0" Grid.Column="3" VerticalAlignment="Center" FontFamily="Consolas"
+                               Text="{Binding AlertHighCurrent, StringFormat='Current: {0}'}"/>
+                    <Button Grid.Row="0" Grid.Column="5" Content="Set"
+                            Command="{Binding SetAlertHighCommand}" IsEnabled="{Binding IsConnected}"/>
+                    <Button Grid.Row="0" Grid.Column="7" Content="Get"
+                            Command="{Binding GetAlertHighCommand}" IsEnabled="{Binding IsConnected}"/>
+
+                    <!-- Alert Low -->
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Alert LOW [Â°C]:" VerticalAlignment="Center"/>
+                    <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding AlertLowInput}"
+                             IsEnabled="{Binding IsConnected}"/>
+                    <TextBlock Grid.Row="2" Grid.Column="3" VerticalAlignment="Center" FontFamily="Consolas"
+                               Text="{Binding AlertLowCurrent, StringFormat='Current: {0}'}"/>
+                    <Button Grid.Row="2" Grid.Column="5" Content="Set"
+                            Command="{Binding SetAlertLowCommand}" IsEnabled="{Binding IsConnected}"/>
+                    <Button Grid.Row="2" Grid.Column="7" Content="Get"
+                            Command="{Binding GetAlertLowCommand}" IsEnabled="{Binding IsConnected}"/>
+
+                    <!-- Alert Status -->
+                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Alert Status:" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="3"
+                               Text="{Binding AlertStatusText}" VerticalAlignment="Center"
+                               FontFamily="Consolas" FontWeight="Bold">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="#CCCCCC"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding AlertStatusText}" Value="HIGH">
+                                        <Setter Property="Foreground" Value="#EE4444"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding AlertStatusText}" Value="LOW">
+                                        <Setter Property="Foreground" Value="#4488EE"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding AlertStatusText}" Value="READY">
+                                        <Setter Property="Foreground" Value="#44BB66"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <Button Grid.Row="4" Grid.Column="5" Grid.ColumnSpan="3" Content="Query Alert Status"
+                            Command="{Binding GetAlertStatusCommand}" IsEnabled="{Binding IsConnected}"/>
+                </Grid>
+            </GroupBox>
+
+            <!-- Conversion Mode & Rate -->
+            <GroupBox Header="Conversion Settings">
+                <Grid Margin="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="8"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="130"/>
+                        <ColumnDefinition Width="160"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="4"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Mode -->
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Mode:" VerticalAlignment="Center"/>
+                    <ComboBox Grid.Row="0" Grid.Column="1"
+                              ItemsSource="{Binding ModeOptions}"
+                              SelectedItem="{Binding SelectedMode}"
+                              IsEnabled="{Binding IsConnected}"/>
+                    <Button Grid.Row="0" Grid.Column="3" Content="Set"
+                            Command="{Binding SetModeCommand}" IsEnabled="{Binding IsConnected}"/>
+                    <Button Grid.Row="0" Grid.Column="5" Content="Get"
+                            Command="{Binding GetModeCommand}" IsEnabled="{Binding IsConnected}"/>
+
+                    <!-- Conv Rate -->
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Conv Rate (0-7):" VerticalAlignment="Center"/>
+                    <Grid Grid.Row="2" Grid.Column="1">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="80"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <mah:NumericUpDown Grid.Column="0"
+                                          Value="{Binding ConvRate}"
+                                          Minimum="0" Maximum="7"
+                                          IsEnabled="{Binding IsConnected}"/>
+                        <TextBlock Grid.Column="2" Text="{Binding ConvRateLabel}"
+                                   VerticalAlignment="Center" FontFamily="Consolas"
+                                   Foreground="#AAAAAA"/>
+                    </Grid>
+                    <Button Grid.Row="2" Grid.Column="3" Content="Set"
+                            Command="{Binding SetConvRateCommand}" IsEnabled="{Binding IsConnected}"/>
+                    <Button Grid.Row="2" Grid.Column="5" Content="Get"
+                            Command="{Binding GetConvRateCommand}" IsEnabled="{Binding IsConnected}"/>
+                </Grid>
+            </GroupBox>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

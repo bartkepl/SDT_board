@@ -1,0 +1,178 @@
+﻿<UserControl x:Class="SDT_App.Views.SystemView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
+             xmlns:vm="clr-namespace:SDT_App.ViewModels"
+             d:DataContext="{d:DesignInstance Type=vm:SystemViewModel}"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <Grid Margin="10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="8"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Left column -->
+            <StackPanel Grid.Column="0">
+
+                <!-- IEEE 488.2 Registers -->
+                <GroupBox Header="IEEE 488.2 Status Registers" Margin="0,0,0,8">
+                    <Grid Margin="8">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="6"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="6"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="6"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="60"/>
+                            <ColumnDefinition Width="80"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="4"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- ESE -->
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="*ESE:" VerticalAlignment="Center" FontFamily="Consolas"/>
+                        <TextBox   Grid.Row="0" Grid.Column="1" Text="{Binding EseInput}" IsEnabled="{Binding IsConnected}"/>
+                        <Button    Grid.Row="0" Grid.Column="3" Content="Set" Command="{Binding SetEseCommand}" IsEnabled="{Binding IsConnected}"/>
+                        <Button    Grid.Row="0" Grid.Column="5" Content="Get" Command="{Binding GetEseCommand}" IsEnabled="{Binding IsConnected}"/>
+
+                        <!-- ESR -->
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="*ESR:" VerticalAlignment="Center" FontFamily="Consolas"/>
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding EsrText}" VerticalAlignment="Center" FontFamily="Consolas" FontWeight="Bold"/>
+                        <Button    Grid.Row="2" Grid.Column="3" Grid.ColumnSpan="3" Content="*ESR?" Command="{Binding GetEsrCommand}" IsEnabled="{Binding IsConnected}"/>
+
+                        <!-- SRE -->
+                        <TextBlock Grid.Row="4" Grid.Column="0" Text="*SRE:" VerticalAlignment="Center" FontFamily="Consolas"/>
+                        <TextBox   Grid.Row="4" Grid.Column="1" Text="{Binding SreInput}" IsEnabled="{Binding IsConnected}"/>
+                        <Button    Grid.Row="4" Grid.Column="3" Content="Set" Command="{Binding SetSreCommand}" IsEnabled="{Binding IsConnected}"/>
+                        <Button    Grid.Row="4" Grid.Column="5" Content="Get" Command="{Binding GetSreCommand}" IsEnabled="{Binding IsConnected}"/>
+
+                        <!-- STB -->
+                        <TextBlock Grid.Row="6" Grid.Column="0" Text="*STB:" VerticalAlignment="Center" FontFamily="Consolas"/>
+                        <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding StbText}" VerticalAlignment="Center" FontFamily="Consolas" FontWeight="Bold"/>
+                        <Button    Grid.Row="6" Grid.Column="3" Grid.ColumnSpan="3" Content="*STB?" Command="{Binding GetStbCommand}" IsEnabled="{Binding IsConnected}"/>
+                    </Grid>
+                </GroupBox>
+
+                <!-- IEEE 488.2 Commands -->
+                <GroupBox Header="IEEE 488.2 Commands">
+                    <WrapPanel Margin="8" Orientation="Horizontal">
+                        <Button Content="*OPC"  Command="{Binding SendOpcCommand}"  IsEnabled="{Binding IsConnected}" Margin="0,0,4,4"/>
+                        <Button Content="*OPC?" Command="{Binding QueryOpcCommand}" IsEnabled="{Binding IsConnected}" Margin="0,0,4,4"/>
+                        <Button Content="*WAI"  Command="{Binding SendWaiCommand}"  IsEnabled="{Binding IsConnected}" Margin="0,0,4,4"/>
+                        <Button Content="*RST"  Command="{Binding SendRstCommand}"  IsEnabled="{Binding IsConnected}" Margin="0,0,4,4"/>
+                        <Button Content="*CLS"  Command="{Binding SendClsCommand}"  IsEnabled="{Binding IsConnected}" Margin="0,0,4,4"/>
+                    </WrapPanel>
+                </GroupBox>
+
+            </StackPanel>
+
+            <!-- Right column -->
+            <StackPanel Grid.Column="2">
+
+                <!-- Self-Test & Errors -->
+                <GroupBox Header="Self-Test &amp; Error Queue" Margin="0,0,0,8">
+                    <Grid Margin="8">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="8"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="8"/>
+                            <RowDefinition Height="80"/>
+                        </Grid.RowDefinitions>
+
+                        <Grid Grid.Row="0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" Content="*TST?" Command="{Binding RunSelfTestCommand}" IsEnabled="{Binding IsConnected}"/>
+                            <TextBlock Grid.Column="1" Text="{Binding SelfTestResult}" Margin="8,0"
+                                       VerticalAlignment="Center" FontFamily="Consolas" FontWeight="Bold">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="#CCCCCC"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding SelfTestResult}" Value="PASS (0)">
+                                                <Setter Property="Foreground" Value="#44BB66"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
+
+                        <WrapPanel Grid.Row="2" Orientation="Horizontal">
+                            <Button Content="Error Count" Command="{Binding GetErrorCountCommand}" IsEnabled="{Binding IsConnected}" Margin="0,0,4,0"/>
+                            <Button Content="Read All Errors" Command="{Binding ReadErrorQueueCommand}" IsEnabled="{Binding IsConnected}" Margin="0,0,4,0"/>
+                            <Button Content="*CLS (Clear)" Command="{Binding SendClsCommand}" IsEnabled="{Binding IsConnected}"/>
+                        </WrapPanel>
+
+                        <TextBox Grid.Row="4" Text="{Binding ErrorQueueText}" IsReadOnly="True"
+                                 TextWrapping="Wrap" FontFamily="Consolas" FontSize="11"
+                                 VerticalScrollBarVisibility="Auto"
+                                 Background="Transparent"/>
+                    </Grid>
+                </GroupBox>
+
+                <!-- Device Info & Control -->
+                <GroupBox Header="Device Info &amp; Control">
+                    <Grid Margin="8">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="6"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="6"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="6"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="100"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- SCPI Version -->
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="SCPI Version:" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding ScpiVersion}" VerticalAlignment="Center" FontFamily="Consolas"/>
+                        <Button Grid.Row="0" Grid.Column="3" Content="Query" Command="{Binding GetVersionCommand}" IsEnabled="{Binding IsConnected}"/>
+
+                        <!-- System ID -->
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="System ID:" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SystemIdText}" VerticalAlignment="Center"
+                                   FontFamily="Consolas" FontSize="10" TextTrimming="CharacterEllipsis"/>
+                        <Button Grid.Row="2" Grid.Column="3" Content="Query" Command="{Binding GetSystemIdCommand}" IsEnabled="{Binding IsConnected}"/>
+
+                        <!-- ID type toggle -->
+                        <StackPanel Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="4" Orientation="Horizontal" Margin="0,0,0,0">
+                            <RadioButton Content="Short ID" Margin="0,0,16,0"
+                                         IsChecked="{Binding IdTypeLong, Converter={StaticResource BoolInverse}}"/>
+                            <RadioButton Content="Long ID" IsChecked="{Binding IdTypeLong}"/>
+                        </StackPanel>
+
+                        <!-- Control buttons -->
+                        <Button Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2" Content="Enter Bootloader (DFU)"
+                                Command="{Binding EnterBootloaderCommand}" IsEnabled="{Binding IsConnected}"
+                                Foreground="#FFDD66" Margin="0,0,4,0"/>
+                        <Button Grid.Row="6" Grid.Column="3" Content="Restart"
+                                Command="{Binding RestartDeviceCommand}" IsEnabled="{Binding IsConnected}"/>
+                    </Grid>
+                </GroupBox>
+
+            </StackPanel>
+        </Grid>
+    </ScrollViewer>
+</UserControl>
