@@ -8,8 +8,8 @@ Benchtop thermometer with SCPI and USB.
 
 - [x] First revision of schematic and PCB is done.
 - [x] PCB and parts ordered
-- [ ] Prototypes assembled and tested
-- [ ] Firmware
+- [x] Prototypes assembled and tested 
+- [x] Firmware (v3.1)
 
 ---
 ## Features:

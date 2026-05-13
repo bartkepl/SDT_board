@@ -1,0 +1,73 @@
+site_name: SDT Board Documentation
+site_description: Dokumentacja urządzenia SDT — USB-termometr z interfejsem SCPI
+site_author: bartkepl
+docs_dir: docs
+repo_url: https://github.com/bartkepl/SDT_board
+
+theme:
+  name: material
+  language: pl
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Ciemny motyw
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Jasny motyw
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.top
+    - navigation.indexes
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+
+plugins:
+  - search:
+      lang: pl
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - attr_list
+  - def_list
+  - toc:
+      permalink: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+nav:
+  - Strona główna: index.md
+  - Pierwsze kroki: getting-started.md
+  - Komendy SCPI:
+    - scpi/index.md
+    - IEEE 488.2: scpi/ieee488.md
+    - SYSTem: scpi/system.md
+    - SENSor: scpi/sensor.md
+    - DISPlay: scpi/display.md
+  - Sprzęt:
+    - hardware/index.md
+    - Czujniki: hardware/sensors.md
+    - Wyświetlacz DLR2416: hardware/display.md
+  - Firmware:
+    - firmware/index.md
+    - API czujników: firmware/sensor-api.md
+    - API wyświetlacza: firmware/display-api.md
+  - TODO: todo.md
