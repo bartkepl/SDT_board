@@ -72,18 +72,14 @@ tud_usbtmc_app_capabilities  =
 #define IEEE4882_STB_SER          (0x20u)
 #define IEEE4882_STB_SRQ          (0x40u)
 
-//static const char idn[] = "TinyUSB,ModelNumber,SerialNumber,FirmwareVer123456\r\n";
-//static const char idn[] = "TinyUSB,ModelNumber,SerialNumber,FirmwareVer and a bunch of other text to make it longer than a packet, perhaps? lets make it three transfers...\n";
 static volatile uint8_t status;
 
-// 0=not query, 1=queried, 2=delay,set(MAV), 3=delay 4=ready?
-// (to simulate delay)
 static volatile uint16_t queryState = 0;
 static volatile uint32_t queryDelayStart;
 static volatile uint32_t bulkInStarted;
 static volatile uint32_t idnQuery;
 
-static uint32_t resp_delay = 125u; // Adjustable delay, to allow for better testing
+static uint32_t resp_delay = 125u;
 static size_t buffer_len;
 static size_t buffer_tx_ix; // for transmitting using multiple transfers
 static uint8_t buffer[225]; // A few packets long should be enough.
@@ -182,9 +178,6 @@ bool tud_usbtmc_msgBulkIn_request_cb(usbtmc_msg_request_dev_dep_in const * reque
 {
   msgReqLen = request->TransferSize;
 
-#ifdef xDEBUG
-  uart_tx_str_sync("MSG_IN_DATA: Requested!\r\n");
-#endif
   if(queryState == 0 || (buffer_tx_ix == 0))
   {
     TU_ASSERT(bulkInStarted == 0);

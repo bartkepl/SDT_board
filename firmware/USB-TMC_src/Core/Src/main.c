@@ -114,8 +114,6 @@ int main(void)
   MX_USB_PCD_Init();
   MX_CRC_Init();
   /* USER CODE BEGIN 2 */
- // AppInit();
-
   HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
   Sensor_Init(&hi2c1);
   tud_init(BOARD_TUD_RHPORT);
@@ -451,39 +449,20 @@ static void MX_GPIO_Init(void)
  */
 void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *hi2c)
 {
-    // Route to Sensor I2C TX complete handler
     if (hi2c->Instance == I2C1)
-    {
         Sensor_I2C_TxComplete_Callback();
-    }
 }
 
-/**
- * @brief I2C Master Reception Complete Callback
- * @param hi2c I2C handle
- * @retval None
- */
 void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c)
 {
-    // Route to Sensor I2C RX complete handler
     if (hi2c->Instance == I2C1)
-    {
         Sensor_I2C_RxComplete_Callback();
-    }
 }
 
-/**
- * @brief I2C Error Callback
- * @param hi2c I2C handle
- * @retval None
- */
 void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c)
 {
-    // Route to Sensor I2C error handler
     if (hi2c->Instance == I2C1)
-    {
         Sensor_I2C_Error_Callback();
-    }
 }
 /* USER CODE END 4 */
 

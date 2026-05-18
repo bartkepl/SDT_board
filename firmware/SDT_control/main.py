@@ -133,6 +133,11 @@ class _ScpiMixin:
             self.log_pane.log(f"{cmd} → {resp}", "ok")
             self.status_bar.set_last_cmd(cmd)
             return resp
+        except pyvisa.errors.VisaIOError:
+            self.log_pane.log(f"COMM ERROR [{cmd}]: connection lost", "error")
+            self.status_bar.set_last_cmd(cmd)
+            self.device.disconnect()
+            return None
         except Exception as e:
             self.log_pane.log(f"ERROR [{cmd}]: {e}", "error")
             self.status_bar.set_last_cmd(cmd)
@@ -144,6 +149,11 @@ class _ScpiMixin:
             self.log_pane.log(f"{cmd}", "ok")
             self.status_bar.set_last_cmd(cmd)
             return True
+        except pyvisa.errors.VisaIOError:
+            self.log_pane.log(f"COMM ERROR [{cmd}]: connection lost", "error")
+            self.status_bar.set_last_cmd(cmd)
+            self.device.disconnect()
+            return False
         except Exception as e:
             self.log_pane.log(f"ERROR [{cmd}]: {e}", "error")
             self.status_bar.set_last_cmd(cmd)
@@ -1308,10 +1318,16 @@ class MeasurementsTab(_BaseTab):
     def _poll_tick(self, interval: float):
         if not self.state.polling:
             return
+        if not self.device.is_connected():
+            self._stop_polling()
+            return
 
         temp_val = hum_val = None
 
         resp = self.safe_query("SENSor:TEMPerature?")
+        if not self.device.is_connected():
+            self._stop_polling()
+            return
         if resp is not None:
             temp_val = SCPIDevice.parse_float(resp)
 
