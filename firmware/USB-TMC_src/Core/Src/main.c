@@ -28,6 +28,7 @@
 #include <scpi-def.h>
 #include <display.h>
 #include <sensor.h>
+#include <flash.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -120,6 +121,7 @@ int main(void)
   tud_init(BOARD_TUD_RHPORT);
   SCPI_Main_Init();
   Display_Init();
+  Config_Init();   /* must be after Display_Init — applies saved config over defaults */
   HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
 
   /* USER CODE END 2 */

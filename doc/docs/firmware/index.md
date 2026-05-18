@@ -75,7 +75,8 @@ Kolejność inicjalizacji przy starcie (`main.c`):
  9. Sensor_Init(&hi2c1)   — detekcja TMP117/SHT45, konfiguracja I2C
 10. tud_init()            — TinyUSB stack
 11. SCPI_Main_Init()      — parser SCPI + rejestracja komend + IDN
-12. Display_Init()        — DLR2416_Init() + domyślna jasność 4%
+12. Config_Init()         — wczytanie konfiguracji z FLASH (DEFAULT/PRIMARY/BACKUP)
+13. Display_Init()        — DLR2416_Init() + zastosowanie zapisanej jasności
 ```
 
 ---
@@ -137,6 +138,27 @@ Niskopoziomowy sterownik DLR2416:
 - `DLR2416_WriteString8()` — zapis 8 znaków na cały wyświetlacz
 - `DLR2416_SetBrightness()` — sterowanie PWM TIM3
 - `DLR2416_PWM_Enable()` / `DLR2416_PWM_Disable()` — włącz/wyłącz
+
+### `App/Flash/flash.c`
+Trójwarstwowy system przechowywania konfiguracji w FLASH EEPROM:
+
+- **Układ pamięci FLASHEE (6 KB = 3 × 2 KB strony):**
+
+  | Strona | Adres | Region | Opis |
+  |--------|-------|--------|------|
+  | 56 | `0x0801C000` | **DEFAULT** | Wartości fabryczne — const, część firmware |
+  | 57 | `0x0801C800` | **PRIMARY** | Aktywna konfiguracja (runtime writable) |
+  | 58 | `0x0801D000` | **BACKUP** | Kopia PRIMARY (runtime writable) |
+
+- `Config_Init()` — wczytuje PRIMARY (CRC OK) → BACKUP (CRC OK, naprawa PRIMARY) → DEFAULT (magic OK) → fallback
+- `Config_Apply()` — stosuje `g_config` do sterowników display i sensor
+- `Config_Capture()` — snapshot bieżącego stanu sterowników do `g_config`
+- `Config_Save()` — `Config_Capture()` + obliczenie CRC + zapis PRIMARY + zapis BACKUP
+- `Config_Restore()` — BACKUP → PRIMARY + `Config_Apply()`
+- `Config_Recall()` — DEFAULT → PRIMARY + BACKUP + `Config_Apply()`
+- `Config_MarkDirty()` / `Config_IsDirty()` — zarządzanie flagą niezapisanych zmian
+
+  Każdy blok 40 bajtów chroniony przez CRC-32 (sprzętowe peryferium CRC STM32). DEFAULT walidowany tylko po magic word (`0x5344544B`).
 
 ### `App/Utils/Utils.c`
 Funkcje pomocnicze:

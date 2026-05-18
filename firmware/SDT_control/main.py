@@ -1724,6 +1724,138 @@ class ConsoleTab(_BaseTab):
 
 
 # ===========================================================================
+# ConfigTab — persistent configuration management (SAVE / RESTORE / RECALL)
+# ===========================================================================
+
+class ConfigTab(_BaseTab):
+    """Three-tier configuration storage: DEFAULT / PRIMARY / BACKUP."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._dirty_var = tk.StringVar(value="—")
+        self._build()
+
+    def _build(self):
+        # ── Information section ────────────────────────────────────────────
+        info_frame = ttk.LabelFrame(self.frame, text="Trójwarstwowy system konfiguracji")
+        info_frame.pack(fill=tk.X, pady=(0, 8))
+
+        info_text = (
+            "DEFAULT  — wartości fabryczne, zapisane w FLASH jako część firmware (adres 0x0801C000).\n"
+            "PRIMARY  — aktywna konfiguracja, wczytywana przy starcie (adres 0x0801C800).\n"
+            "BACKUP   — kopia PRIMARY, używana gdy PRIMARY jest uszkodzony (adres 0x0801D000).\n\n"
+            "Zmiany parametrów (czujnik, wyświetlacz) są przechowywane w RAM do momentu\n"
+            "jawnego zapisu komendą SAVE. Po resecie urządzenie wczytuje PRIMARY z FLASH."
+        )
+        ttk.Label(info_frame, text=info_text, justify=tk.LEFT,
+                  foreground="#444444").pack(anchor="w", padx=8, pady=6)
+
+        # ── Dirty indicator ────────────────────────────────────────────────
+        status_frame = ttk.LabelFrame(self.frame, text="Stan konfiguracji")
+        status_frame.pack(fill=tk.X, pady=(0, 8))
+
+        status_inner = ttk.Frame(status_frame)
+        status_inner.pack(fill=tk.X, padx=8, pady=6)
+
+        ttk.Label(status_inner, text="Niezapisane zmiany w RAM:").pack(side=tk.LEFT)
+        self._dirty_label = ttk.Label(status_inner, textvariable=self._dirty_var,
+                                      font=("", 10, "bold"), foreground="#888888", width=6)
+        self._dirty_label.pack(side=tk.LEFT, padx=(6, 16))
+
+        refresh_btn = ttk.Button(status_inner, text="Odśwież", width=10,
+                                 command=self._refresh_dirty)
+        refresh_btn.pack(side=tk.LEFT)
+        self._connected_widgets.append(refresh_btn)
+
+        # ── Action buttons ─────────────────────────────────────────────────
+        act_frame = ttk.LabelFrame(self.frame, text="Operacje")
+        act_frame.pack(fill=tk.X, pady=(0, 8))
+
+        btn_grid = ttk.Frame(act_frame)
+        btn_grid.pack(fill=tk.X, padx=8, pady=8)
+
+        # SAVE
+        save_btn = ttk.Button(btn_grid, text="💾  Save Config",
+                              command=self._on_save, width=22)
+        save_btn.grid(row=0, column=0, padx=6, pady=4, sticky="w")
+        ttk.Label(btn_grid,
+                  text="Zapisz bieżącą konfigurację RAM → PRIMARY + BACKUP (z CRC)",
+                  foreground="#555555").grid(row=0, column=1, padx=6, sticky="w")
+        self._connected_widgets.append(save_btn)
+
+        # RESTORE
+        restore_btn = ttk.Button(btn_grid, text="↩  Restore from Backup",
+                                 command=self._on_restore, width=22)
+        restore_btn.grid(row=1, column=0, padx=6, pady=4, sticky="w")
+        ttk.Label(btn_grid,
+                  text="Przywróć PRIMARY z BACKUP (naprawa uszkodzonego PRIMARY)",
+                  foreground="#555555").grid(row=1, column=1, padx=6, sticky="w")
+        self._connected_widgets.append(restore_btn)
+
+        # RECALL
+        recall_btn = ttk.Button(btn_grid, text="🏭  Factory Recall",
+                                command=self._on_recall, width=22)
+        recall_btn.grid(row=2, column=0, padx=6, pady=4, sticky="w")
+        ttk.Label(btn_grid,
+                  text="Przywróć ustawienia fabryczne (DEFAULT → PRIMARY + BACKUP)",
+                  foreground="#555555").grid(row=2, column=1, padx=6, sticky="w")
+        self._connected_widgets.append(recall_btn)
+
+        self._sync_ui_state(False)
+
+    # ── Handlers ───────────────────────────────────────────────────────────
+
+    def _refresh_dirty(self):
+        if not self.require_connection():
+            return
+        resp = self.safe_query("SYSTem:CONFig:DIRty?")
+        if resp is None:
+            return
+        dirty = resp.strip() not in ("0", "FALSE", "false")
+        self._dirty_var.set("TAK" if dirty else "NIE")
+        self._dirty_label.config(foreground="#cc3333" if dirty else "#33aa55")
+
+    def _on_save(self):
+        if not self.require_connection():
+            return
+        ok = self.safe_write("SYSTem:CONFig:SAVE")
+        if ok:
+            self.log_pane.log("Config saved to PRIMARY + BACKUP flash.", "ok")
+            self._refresh_dirty()
+
+    def _on_restore(self):
+        if not self.require_connection():
+            return
+        if not messagebox.askyesno(
+                "Restore from Backup",
+                "Przywrócić PRIMARY z bloku BACKUP?\n"
+                "Bieżące niezapisane zmiany w PRIMARY zostaną utracone."):
+            return
+        ok = self.safe_write("SYSTem:CONFig:RESTore")
+        if ok:
+            self.log_pane.log("PRIMARY restored from BACKUP.", "ok")
+            self._refresh_dirty()
+
+    def _on_recall(self):
+        if not self.require_connection():
+            return
+        if not messagebox.askyesno(
+                "Factory Recall",
+                "Przywrócić ustawienia fabryczne (DEFAULT)?\n"
+                "PRIMARY i BACKUP zostaną nadpisane wartościami domyślnymi."):
+            return
+        ok = self.safe_write("SYSTem:CONFig:RECall")
+        if ok:
+            self.log_pane.log("Factory defaults recalled to PRIMARY + BACKUP.", "ok")
+            self._refresh_dirty()
+
+    def on_tab_selected(self):
+        """Called when this tab is brought to focus — auto-refresh dirty flag."""
+        if self.device.is_connected():
+            self._refresh_dirty()
+
+
+# ===========================================================================
 # SDTApp — orchestrator
 # ===========================================================================
 
@@ -1757,6 +1889,7 @@ class SDTApp:
         self.tmp117_tab  = TMP117Tab(self.notebook, **common)
         self.disp_tab    = DisplayTab(self.notebook, **common)
         self.sys_tab     = SystemTab(self.notebook, **common)
+        self.config_tab  = ConfigTab(self.notebook, **common)
         self.meas_tab    = MeasurementsTab(self.notebook, **common, root=self.root)
         self.dfu_tab     = DFUTab(self.notebook, **common, root=self.root)
         self.console_tab = ConsoleTab(self.notebook, **common)
@@ -1767,6 +1900,7 @@ class SDTApp:
             (self.tmp117_tab,  "TMP117"),
             (self.disp_tab,    "Display"),
             (self.sys_tab,     "System"),
+            (self.config_tab,  "Config"),
             (self.meas_tab,    "Measurements"),
             (self.dfu_tab,     "DFU Programmer"),
             (self.console_tab, "Console"),
@@ -1774,10 +1908,24 @@ class SDTApp:
         for tab, label in tabs:
             self.notebook.add(tab.frame, text=f"  {label}  ")
 
+        self.notebook.bind("<<NotebookTabChanged>>", self._on_tab_changed)
+
         self.conn_tab.on_connect_callback    = self._on_device_connected
         self.conn_tab.on_disconnect_callback = self._on_device_disconnected
 
         self.log_pane.log("SDT Board Companion started — select a VISA resource and click Connect.", "info")
+
+    def _on_tab_changed(self, _event=None):
+        try:
+            idx = self.notebook.index(self.notebook.select())
+            tabs_list = [self.conn_tab, self.sensor_tab, self.tmp117_tab,
+                         self.disp_tab, self.sys_tab, self.config_tab,
+                         self.meas_tab, self.dfu_tab, self.console_tab]
+            tab = tabs_list[idx]
+            if hasattr(tab, "on_tab_selected"):
+                tab.on_tab_selected()
+        except Exception:
+            pass
 
     def _on_device_connected(self, resource_name: str, sensor_type: Optional[str]):
         self.status_bar.set_connected(resource_name)
@@ -1785,7 +1933,7 @@ class SDTApp:
         self.tmp117_tab.update_sensor_availability(sensor_type)
         self.sensor_tab.update_sensor_availability(sensor_type)
         for tab in (self.sensor_tab, self.tmp117_tab, self.disp_tab,
-                    self.sys_tab, self.meas_tab, self.console_tab):
+                    self.sys_tab, self.config_tab, self.meas_tab, self.console_tab):
             tab._sync_ui_state(True)
 
     def _on_device_disconnected(self):
@@ -1793,7 +1941,7 @@ class SDTApp:
         self.status_bar.set_sensor_type(None)
         self.meas_tab.stop_polling_if_active()
         for tab in (self.sensor_tab, self.tmp117_tab, self.disp_tab,
-                    self.sys_tab, self.meas_tab, self.console_tab):
+                    self.sys_tab, self.config_tab, self.meas_tab, self.console_tab):
             tab._sync_ui_state(False)
 
     def _on_close(self):

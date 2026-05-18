@@ -46,7 +46,7 @@ MEMORY
 {
   RAM    (xrw)    : ORIGIN = 0x20000000,   LENGTH = 24K
   FLASH    (rx)    : ORIGIN = 0x8000000,   LENGTH = 126K
-  FLASHEE    (rx)    : ORIGIN = 0x801C000,   LENGTH = 8K 
+  FLASHEE    (rx)    : ORIGIN = 0x801C000,   LENGTH = 6K
 }
 
 /* Sections */
@@ -176,12 +176,32 @@ SECTIONS
     . = ALIGN(8);
   } >RAM
   
-  .device_basic 0x801C000 :
+  /* FLASHEE layout (6 KB = 3 x 2 KB pages):
+   *   0x0801C000  Page 56  DEFAULT  - factory defaults, const, firmware-baked
+   *   0x0801C800  Page 57  PRIMARY  - active config, runtime writable (NOLOAD)
+   *   0x0801D000  Page 58  BACKUP   - copy of PRIMARY, runtime writable (NOLOAD)
+   */
+  .config_default 0x801C000 :
   {
-  	. = ALIGN(4);
-  	KEEP(*(.device_basic))
-  	KEEP(*(.device_basic*))
-  	. = ALIGN(4);
+    . = ALIGN(4);
+    KEEP(*(.config_default))
+    . = ALIGN(4);
+  } >FLASHEE
+
+  /* PRIMARY and BACKUP: address space is reserved but NOT in the binary.
+     Flash programmer leaves these pages untouched -> user config survives FW updates. */
+  .config_primary 0x801C800 (NOLOAD) :
+  {
+    . = ALIGN(4);
+    KEEP(*(.config_primary))
+    . = ALIGN(4);
+  } >FLASHEE
+
+  .config_backup 0x801D000 (NOLOAD) :
+  {
+    . = ALIGN(4);
+    KEEP(*(.config_backup))
+    . = ALIGN(4);
   } >FLASHEE
 
   /* Remove information from the compiler libraries */

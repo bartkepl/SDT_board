@@ -16,6 +16,7 @@
 #include <sht45.h>
 #include <tmp117.h>
 #include <Utils.h>
+#include <flash.h>
 
 
 /* Push error code and return SCPI_RES_ERR in one step */
@@ -66,6 +67,11 @@ static scpi_result_t SCPI_SensorConvRateQ(scpi_t *context);
 static scpi_result_t SCPI_SensorConvRate(scpi_t *context);
 static scpi_result_t SCPI_SensorSoftReset(scpi_t *context);
 
+/* Config storage commands */
+static scpi_result_t SCPI_ConfigSave(scpi_t *context);
+static scpi_result_t SCPI_ConfigRestore(scpi_t *context);
+static scpi_result_t SCPI_ConfigRecall(scpi_t *context);
+static scpi_result_t SCPI_ConfigDirtyQ(scpi_t *context);
 
 /* ===== SCPI command list ===== */
 
@@ -134,6 +140,12 @@ static const scpi_command_t scpi_commands[] = {
 
 	// Soft reset (both sensors)
 	{.pattern = "SENSor:SOFTReset",     .callback = SCPI_SensorSoftReset,   },
+
+	// Configuration storage
+	{.pattern = "SYSTem:CONFig:SAVE",    .callback = SCPI_ConfigSave,    },
+	{.pattern = "SYSTem:CONFig:RESTore", .callback = SCPI_ConfigRestore, },
+	{.pattern = "SYSTem:CONFig:RECall",  .callback = SCPI_ConfigRecall,  },
+	{.pattern = "SYSTem:CONFig:DIRty?",  .callback = SCPI_ConfigDirtyQ,  },
 
     SCPI_CMD_LIST_END
 };
@@ -380,6 +392,7 @@ static scpi_result_t SCPI_DisplayBrightness(scpi_t *context) {
 		SCPI_PUSH_ERR(context, SCPI_ERROR_DATA_OUT_OF_RANGE);
 
 	Display_SetBrightness(brightness);
+	Config_MarkDirty();
 	return SCPI_RES_OK;
 }
 
@@ -394,6 +407,7 @@ static scpi_result_t SCPI_DisplayState(scpi_t *context) {
 		SCPI_PUSH_ERR(context, SCPI_ERROR_MISSING_PARAMETER);
 
 	Display_SetState(state);
+	Config_MarkDirty();
 	return SCPI_RES_OK;
 }
 
@@ -406,6 +420,7 @@ static scpi_result_t SCPI_DisplaySource(scpi_t *context) {
 		SCPI_PUSH_ERR(context, SCPI_ERROR_DATA_OUT_OF_RANGE);
 
 	Display_SelectSource((DisplaySource_t) source);
+	Config_MarkDirty();
 	return SCPI_RES_OK;
 }
 
@@ -470,6 +485,7 @@ static scpi_result_t SCPI_SensorReadPeriod(scpi_t *context) {
 		Sensor_SHT45_SetReadPeriod((uint16_t)periodMs);
 	if (g_sensor.type == SENSOR_TMP117)
 		Sensor_TMP117_SetReadPeriod((uint16_t)periodMs);
+	Config_MarkDirty();
 	return SCPI_RES_OK;
 }
 
@@ -520,6 +536,7 @@ static scpi_result_t SCPI_SensorAverage(scpi_t *context) {
 		else SCPI_PUSH_ERR(context, SCPI_ERROR_DATA_OUT_OF_RANGE);
 		Sensor_TMP117_SetAvgHW((uint8_t)avg);
 	}
+	Config_MarkDirty();
 	return SCPI_RES_OK;
 }
 
@@ -559,6 +576,7 @@ static scpi_result_t SCPI_SensorPrecision(scpi_t *context) {
 		SCPI_PUSH_ERR(context, SCPI_ERROR_MISSING_PARAMETER);
 
 	Sensor_SHT45_SetMeasurementPrecision((uint8_t)precision);
+	Config_MarkDirty();
 	return SCPI_RES_OK;
 }
 
@@ -592,6 +610,7 @@ static scpi_result_t SCPI_SensorAlertHigh(scpi_t *context) {
 	if (threshold < -55.0f || threshold > 150.0f)
 		SCPI_PUSH_ERR(context, SCPI_ERROR_DATA_OUT_OF_RANGE);
 	Sensor_TMP117_SetAlertHigh(threshold);
+	Config_MarkDirty();
 	return SCPI_RES_OK;
 }
 
@@ -609,6 +628,7 @@ static scpi_result_t SCPI_SensorAlertLow(scpi_t *context) {
 	if (threshold < -55.0f || threshold > 150.0f)
 		SCPI_PUSH_ERR(context, SCPI_ERROR_DATA_OUT_OF_RANGE);
 	Sensor_TMP117_SetAlertLow(threshold);
+	Config_MarkDirty();
 	return SCPI_RES_OK;
 }
 
@@ -639,6 +659,7 @@ static scpi_result_t SCPI_SensorMode(scpi_t *context) {
 	if (!SCPI_ParamChoice(context, mode_options, &mode, TRUE))
 		SCPI_PUSH_ERR(context, SCPI_ERROR_MISSING_PARAMETER);
 	Sensor_TMP117_SetMode((uint8_t)mode);
+	Config_MarkDirty();
 	return SCPI_RES_OK;
 }
 
@@ -656,6 +677,7 @@ static scpi_result_t SCPI_SensorConvRate(scpi_t *context) {
 	if (rate > 7u)
 		SCPI_PUSH_ERR(context, SCPI_ERROR_DATA_OUT_OF_RANGE);
 	Sensor_TMP117_SetConvRate((uint8_t)rate);
+	Config_MarkDirty();
 	return SCPI_RES_OK;
 }
 
@@ -674,5 +696,35 @@ static scpi_result_t SCPI_SensorSoftReset(scpi_t *context) {
 	default:
 		SCPI_PUSH_ERR(context, SCPI_ERROR_HARDWARE_MISSING);
 	}
+	return SCPI_RES_OK;
+}
+
+//------------------------------------------------------------------//
+// Configuration storage handlers
+//------------------------------------------------------------------//
+
+static scpi_result_t SCPI_ConfigSave(scpi_t *context) {
+	if (Config_Save() != CONFIG_OK)
+		SCPI_PUSH_ERR(context, SCPI_ERROR_HARDWARE_ERROR);
+	return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_ConfigRestore(scpi_t *context) {
+	ConfigStatus_t st = Config_Restore();
+	if (st == CONFIG_ERR_CRC || st == CONFIG_ERR_MAGIC)
+		SCPI_PUSH_ERR(context, SCPI_ERROR_DATA_CORRUPT);
+	if (st == CONFIG_ERR_FLASH)
+		SCPI_PUSH_ERR(context, SCPI_ERROR_HARDWARE_ERROR);
+	return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_ConfigRecall(scpi_t *context) {
+	if (Config_Recall() != CONFIG_OK)
+		SCPI_PUSH_ERR(context, SCPI_ERROR_HARDWARE_ERROR);
+	return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_ConfigDirtyQ(scpi_t *context) {
+	SCPI_ResultBool(context, Config_IsDirty());
 	return SCPI_RES_OK;
 }

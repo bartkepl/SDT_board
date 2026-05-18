@@ -132,6 +132,127 @@ inst.write('SYSTem:RST')
 
 ---
 
+## SYSTem:CONFig — Zarządzanie konfiguracją
+
+Komendy `SYSTem:CONFig:` umożliwiają trwały zapis, przywracanie i reset parametrów urządzenia w pamięci FLASH.
+
+### Trójwarstwowy system pamięci
+
+| Region   | Adres FLASH  | Strona | Opis |
+|----------|-------------|--------|------|
+| DEFAULT  | `0x0801C000` | 56    | Wartości fabryczne — const, zapisane jako część firmware, nigdy nie nadpisywane |
+| PRIMARY  | `0x0801C800` | 57    | Aktywna konfiguracja — wczytywana przy starcie, zapisywana przez `SAVE` |
+| BACKUP   | `0x0801D000` | 58    | Kopia PRIMARY — używana gdy PRIMARY jest uszkodzony (błąd CRC) |
+
+Każdy blok jest zabezpieczony CRC-32 (sprzętowe peryferium STM32). DEFAULT jest walidowany tylko po magic word (CRC = 0 — wartość kompilowana statycznie).
+
+**Priorytet ładowania przy starcie:**  
+PRIMARY (CRC OK) → BACKUP (CRC OK, naprawa PRIMARY) → DEFAULT (magic OK) → wartości hardcoded
+
+Zmiany parametrów (sensor, display) są przechowywane w RAM do momentu jawnego `SAVE`. Wskaźnik `DIRty?` informuje, czy RAM różni się od PRIMARY w FLASH.
+
+---
+
+## `SYSTem:CONFig:SAVE`
+
+Zapisuje bieżącą konfigurację RAM do PRIMARY i BACKUP z obliczonym CRC-32.
+
+**Składnia:** `SYSTem:CONFig:SAVE`  
+**Parametry:** brak  
+**Odpowiedź:** brak  
+**Błędy:** `-240 Hardware error` gdy zapis do FLASH się nie powiódł
+
+```python
+inst.write('DISPlay:BRIGhtness 50')   # zmiana w RAM
+inst.write('SYSTem:CONFig:SAVE')      # zapis do FLASH
+# po resecie jasność nadal wynosi 50
+```
+
+!!! note
+    Operacja kasuje i przeprogramowuje dwie strony FLASH po 2 KB każda (PRIMARY + BACKUP). Może potrwać ok. 30–60 ms.
+
+---
+
+## `SYSTem:CONFig:RESTore`
+
+Przywraca PRIMARY z bloku BACKUP. Używane do naprawy uszkodzonego PRIMARY.
+
+**Składnia:** `SYSTem:CONFig:RESTore`  
+**Parametry:** brak  
+**Odpowiedź:** brak  
+**Błędy:** `-230 Data corrupt` gdy BACKUP ma błędny CRC; `-240 Hardware error` gdy zapis się nie powiódł
+
+```python
+inst.write('SYSTem:CONFig:RESTore')   # PRIMARY ← BACKUP
+```
+
+!!! warning
+    Bieżące niezapisane zmiany w PRIMARY zostaną utracone. Aktywna konfiguracja RAM zostaje zastąpiona wartościami z BACKUP.
+
+---
+
+## `SYSTem:CONFig:RECall`
+
+Przywraca ustawienia fabryczne: kopiuje DEFAULT do PRIMARY i BACKUP, a następnie stosuje je jako aktywną konfigurację RAM.
+
+**Składnia:** `SYSTem:CONFig:RECall`  
+**Parametry:** brak  
+**Odpowiedź:** brak  
+**Błędy:** `-240 Hardware error` gdy zapis się nie powiódł
+
+```python
+inst.write('SYSTem:CONFig:RECall')    # PRIMARY ← DEFAULT, BACKUP ← DEFAULT
+inst.write('DISPlay:BRIGhtness?')     # → 20 (wartość domyślna)
+```
+
+!!! warning
+    Nadpisuje zarówno PRIMARY jak i BACKUP wartościami fabrycznymi. Ustawień nie można cofnąć (o ile nie masz wcześniej zapisanego BACKUP).
+
+---
+
+## `SYSTem:CONFig:DIRty?`
+
+Zwraca 1 jeśli bieżąca konfiguracja RAM różni się od PRIMARY w FLASH (są niezapisane zmiany), 0 jeśli są identyczne.
+
+**Składnia:** `SYSTem:CONFig:DIRty?`  
+**Parametry:** brak  
+**Odpowiedź:** `0` lub `1`
+
+```python
+inst.write('SENSor:READperiod 500')
+dirty = int(inst.query('SYSTem:CONFig:DIRty?'))  # → 1
+inst.write('SYSTem:CONFig:SAVE')
+dirty = int(inst.query('SYSTem:CONFig:DIRty?'))  # → 0
+```
+
+---
+
+## Podsumowanie komend CONFig
+
+| Komenda | Opis |
+|---------|------|
+| `SYSTem:CONFig:SAVE` | RAM snapshot → PRIMARY + BACKUP (z CRC) |
+| `SYSTem:CONFig:RESTore` | BACKUP → PRIMARY (naprawa) |
+| `SYSTem:CONFig:RECall` | DEFAULT → PRIMARY + BACKUP (reset fabryczny) |
+| `SYSTem:CONFig:DIRty?` | `1` jeśli są niezapisane zmiany |
+
+### Parametry przechowywane w konfiguracji
+
+| Parametr | Domyślna wartość |
+|----------|-----------------|
+| `DISPlay:BRIGhtness` | 20 % |
+| `DISPlay:STATe` | ON (1) |
+| `DISPlay:SOURce` | 0 (pomiar) |
+| `SENSor:READperiod` | 1000 ms |
+| `SENSor:AVErage` | 1 (SHT45) / 8 (TMP117) |
+| `SENSor:PRECision` | HIGH (SHT45) |
+| `SENSor:MODe` | CONTINUOUS (TMP117) |
+| `SENSor:CONVrate` | 4 (1 s, TMP117) |
+| `SENSor:ALERt:HIGH` | 80.0 °C (TMP117) |
+| `SENSor:ALERt:LOW` | −10.0 °C (TMP117) |
+
+---
+
 ## Kody błędów SCPI {#kody-bledow-scpi}
 
 Tabela błędów generowanych przez SDT Board:
@@ -189,3 +310,7 @@ Tabela błędów generowanych przez SDT Board:
 | `SYSTem:ID? [SHORT\|LONG]` | `SHORT`/`LONG` | string 8 lub 40 znaków | Numer seryjny MCU |
 | `SYSTem:BOOTloader:ENter` | — | — | Wejście w tryb DFU |
 | `SYSTem:RST` | — | — | Programowy reset MCU |
+| `SYSTem:CONFig:SAVE` | — | — | RAM → PRIMARY + BACKUP (zapis trwały) |
+| `SYSTem:CONFig:RESTore` | — | — | BACKUP → PRIMARY (naprawa) |
+| `SYSTem:CONFig:RECall` | — | — | DEFAULT → PRIMARY + BACKUP (reset fabryczny) |
+| `SYSTem:CONFig:DIRty?` | — | `0`/`1` | Czy są niezapisane zmiany w RAM |
