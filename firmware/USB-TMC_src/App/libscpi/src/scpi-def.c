@@ -9,6 +9,7 @@
 #include "scpi-def.h"
 #include "stm32c0xx_hal.h"
 #include <string.h>
+#include <stdio.h>
 #include <math.h>
 #include <usbtmc_app.h>
 #include <display.h>
@@ -72,6 +73,15 @@ static scpi_result_t SCPI_ConfigSave(scpi_t *context);
 static scpi_result_t SCPI_ConfigRestore(scpi_t *context);
 static scpi_result_t SCPI_ConfigRecall(scpi_t *context);
 static scpi_result_t SCPI_ConfigDirtyQ(scpi_t *context);
+
+/* Calibration commands */
+static scpi_result_t SCPI_CalCoeff(scpi_t *context);
+static scpi_result_t SCPI_CalCoeffQ(scpi_t *context);
+static scpi_result_t SCPI_CalState(scpi_t *context);
+static scpi_result_t SCPI_CalStateQ(scpi_t *context);
+static scpi_result_t SCPI_CalDate(scpi_t *context);
+static scpi_result_t SCPI_CalDateQ(scpi_t *context);
+static scpi_result_t SCPI_CalReset(scpi_t *context);
 
 /* ===== SCPI command list ===== */
 
@@ -146,6 +156,15 @@ static const scpi_command_t scpi_commands[] = {
 	{.pattern = "SYSTem:CONFig:RESTore", .callback = SCPI_ConfigRestore, },
 	{.pattern = "SYSTem:CONFig:RECall",  .callback = SCPI_ConfigRecall,  },
 	{.pattern = "SYSTem:CONFig:DIRty?",  .callback = SCPI_ConfigDirtyQ,  },
+
+	// Polynomial calibration
+	{.pattern = "CALibration:COEFficient",   .callback = SCPI_CalCoeff,   },
+	{.pattern = "CALibration:COEFficient?",  .callback = SCPI_CalCoeffQ,  },
+	{.pattern = "CALibration:STATe",         .callback = SCPI_CalState,   },
+	{.pattern = "CALibration:STATe?",        .callback = SCPI_CalStateQ,  },
+	{.pattern = "CALibration:DATE",          .callback = SCPI_CalDate,    },
+	{.pattern = "CALibration:DATE?",         .callback = SCPI_CalDateQ,   },
+	{.pattern = "CALibration:RESet",         .callback = SCPI_CalReset,   },
 
     SCPI_CMD_LIST_END
 };
@@ -726,5 +745,82 @@ static scpi_result_t SCPI_ConfigRecall(scpi_t *context) {
 
 static scpi_result_t SCPI_ConfigDirtyQ(scpi_t *context) {
 	SCPI_ResultBool(context, Config_IsDirty());
+	return SCPI_RES_OK;
+}
+
+//------------------------------------------------------------------//
+// Polynomial calibration handlers
+// T_cal = a0 + a1*T + a2*T^2 + a3*T^3
+//------------------------------------------------------------------//
+
+static scpi_result_t SCPI_CalCoeff(scpi_t *context) {
+	double a0, a1, a2, a3;
+	if (!SCPI_ParamDouble(context, &a0, TRUE))
+		SCPI_PUSH_ERR(context, SCPI_ERROR_MISSING_PARAMETER);
+	if (!SCPI_ParamDouble(context, &a1, TRUE))
+		SCPI_PUSH_ERR(context, SCPI_ERROR_MISSING_PARAMETER);
+	if (!SCPI_ParamDouble(context, &a2, TRUE))
+		SCPI_PUSH_ERR(context, SCPI_ERROR_MISSING_PARAMETER);
+	if (!SCPI_ParamDouble(context, &a3, TRUE))
+		SCPI_PUSH_ERR(context, SCPI_ERROR_MISSING_PARAMETER);
+
+	g_config.cal_a0 = (float)a0;
+	g_config.cal_a1 = (float)a1;
+	g_config.cal_a2 = (float)a2;
+	g_config.cal_a3 = (float)a3;
+	Config_MarkDirty();
+	return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_CalCoeffQ(scpi_t *context) {
+	char buf[64];
+	int len = snprintf(buf, sizeof(buf), "%e,%e,%e,%e",
+	    (double)g_config.cal_a0, (double)g_config.cal_a1,
+	    (double)g_config.cal_a2, (double)g_config.cal_a3);
+	SCPI_ResultCharacters(context, buf, (size_t)len);
+	return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_CalState(scpi_t *context) {
+	bool state;
+	if (!SCPI_ParamBool(context, &state, TRUE))
+		SCPI_PUSH_ERR(context, SCPI_ERROR_MISSING_PARAMETER);
+	g_config.cal_active = state ? 1u : 0u;
+	Config_MarkDirty();
+	return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_CalStateQ(scpi_t *context) {
+	SCPI_ResultBool(context, g_config.cal_active != 0u);
+	return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_CalDate(scpi_t *context) {
+	const char *ptr;
+	size_t len;
+	if (!SCPI_ParamCharacters(context, &ptr, &len, TRUE))
+		SCPI_PUSH_ERR(context, SCPI_ERROR_MISSING_PARAMETER);
+	/* Expect exactly "YYYY-MM-DD" (10 chars) */
+	if (len != 10)
+		SCPI_PUSH_ERR(context, SCPI_ERROR_DATA_OUT_OF_RANGE);
+	memcpy(g_config.cal_date, ptr, 10u);
+	Config_MarkDirty();
+	return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_CalDateQ(scpi_t *context) {
+	SCPI_ResultCharacters(context, g_config.cal_date, 10u);
+	return SCPI_RES_OK;
+}
+
+static scpi_result_t SCPI_CalReset(scpi_t *context) {
+	(void)context;
+	g_config.cal_a0 = 0.0f;
+	g_config.cal_a1 = 1.0f;
+	g_config.cal_a2 = 0.0f;
+	g_config.cal_a3 = 0.0f;
+	g_config.cal_active = 0u;
+	memcpy(g_config.cal_date, "----------", 10u);
+	Config_MarkDirty();
 	return SCPI_RES_OK;
 }

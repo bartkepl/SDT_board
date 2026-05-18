@@ -25,7 +25,7 @@
 #define CONFIG_PAGE_BACKUP   58u
 
 #define CONFIG_MAGIC    0x5344544BUL   /* "SDTK" */
-#define CONFIG_VERSION  1u
+#define CONFIG_VERSION  2u             /* bumped: added calibration block */
 
 /* ===== Configuration block =========================================== */
 
@@ -57,12 +57,23 @@ typedef struct __attribute__((packed)) {
     int16_t  tmp117AlertLowRaw;   /* TLOW shadow */
     uint8_t  _r3[2];
 
-    /* Integrity — CRC32 over the preceding 32 bytes (8 × uint32_t) */
+    /* Polynomial calibration — T_cal = a0 + a1*T + a2*T^2 + a3*T^3
+     * Identity coefficients (a0=0, a1=1, a2=0, a3=0) mean no correction. */
+    float    cal_a0;              /* constant offset [°C] */
+    float    cal_a1;              /* linear gain (1.0 = identity) */
+    float    cal_a2;              /* quadratic coefficient */
+    float    cal_a3;              /* cubic coefficient */
+    uint8_t  cal_active;          /* 0=off, 1=apply calibration */
+    uint8_t  _r4;
+    char     cal_date[10];        /* "YYYY-MM-DD" (no null in flash) */
+    uint8_t  _r5[4];
+
+    /* Integrity — CRC32 over the preceding 64 bytes (16 × uint32_t) */
     uint32_t crc32;               /* 0 in DEFAULT block (not validated) */
     uint32_t _pad;                /* align to 8 bytes for DOUBLEWORD write */
 } SDT_Config_t;
 
-_Static_assert(sizeof(SDT_Config_t) == 40u, "SDT_Config_t size must be 40 bytes");
+_Static_assert(sizeof(SDT_Config_t) == 72u, "SDT_Config_t size must be 72 bytes");
 
 /* ===== Status ======================================================== */
 

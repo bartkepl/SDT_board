@@ -1415,6 +1415,238 @@ class MeasurementsTab(_BaseTab):
 
 
 # ===========================================================================
+# CalibrationTab
+# ===========================================================================
+
+class CalibrationTab(_BaseTab):
+    """Polynomial calibration wizard.
+
+    Workflow:
+      1. Enter pairs (T_measured, T_reference) — minimum 2 points.
+      2. Click "Fit polynomial" — numpy fits degree-1..3 polynomial.
+      3. Inspect residuals chart and statistics.
+      4. Click "Send to device" — writes coefficients via SCPI CAL: subsystem.
+    """
+
+    MAX_DEGREE = 3
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._points: list[tuple[float, float]] = []   # (T_raw, T_ref)
+        self._coeffs: Optional[list[float]] = None     # [a0..a3] current fit
+        self._fig = None
+        self._canvas = None
+        self._build()
+
+    def _build(self):
+        # ---- Top: import numpy check ----
+        try:
+            import numpy  # noqa: F401
+        except ImportError:
+            ttk.Label(self.frame,
+                      text="numpy is required for calibration fitting.\n"
+                           "Install with:  pip install numpy",
+                      foreground="#cc3333", font=("Courier New", 10)).pack(pady=20)
+            return
+
+        top = ttk.Frame(self.frame)
+        top.pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
+        left = ttk.Frame(top)
+        left.pack(side=tk.LEFT, fill=tk.BOTH)
+        right = ttk.Frame(top)
+        right.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(10, 0))
+
+        # ---- Point entry ----
+        entry_frame = ttk.LabelFrame(left, text="Calibration points  (T_measured, T_reference)")
+        entry_frame.pack(fill=tk.X, pady=(0, 6))
+
+        row0 = ttk.Frame(entry_frame)
+        row0.pack(fill=tk.X, padx=6, pady=4)
+        ttk.Label(row0, text="T measured [°C]:").grid(row=0, column=0, sticky="w")
+        self._meas_entry = ttk.Entry(row0, width=12)
+        self._meas_entry.grid(row=0, column=1, padx=4)
+        ttk.Label(row0, text="T reference [°C]:").grid(row=0, column=2, sticky="w", padx=(8, 0))
+        self._ref_entry = ttk.Entry(row0, width=12)
+        self._ref_entry.grid(row=0, column=3, padx=4)
+        ttk.Button(row0, text="Add point", command=self._add_point).grid(row=0, column=4, padx=4)
+
+        self._point_list = tk.Listbox(entry_frame, height=8, width=36,
+                                      selectmode=tk.SINGLE, font=("Courier New", 9))
+        self._point_list.pack(fill=tk.X, padx=6, pady=(0, 4))
+        ttk.Button(entry_frame, text="Remove selected",
+                   command=self._remove_point).pack(anchor="w", padx=6, pady=(0, 4))
+
+        # ---- Polynomial degree ----
+        deg_frame = ttk.LabelFrame(left, text="Polynomial degree")
+        deg_frame.pack(fill=tk.X, pady=(0, 6))
+        self._degree_var = tk.IntVar(value=3)
+        for d in range(1, self.MAX_DEGREE + 1):
+            ttk.Radiobutton(deg_frame, text=f"  degree {d}", variable=self._degree_var,
+                            value=d).pack(anchor="w", padx=6)
+
+        # ---- Actions ----
+        act_frame = ttk.LabelFrame(left, text="Actions")
+        act_frame.pack(fill=tk.X, pady=(0, 6))
+        ttk.Button(act_frame, text="Fit polynomial",
+                   command=self._fit).pack(fill=tk.X, padx=6, pady=3)
+        self._send_btn = ttk.Button(act_frame, text="Send to device",
+                                     command=self._send_to_device, state="disabled")
+        self._send_btn.pack(fill=tk.X, padx=6, pady=3)
+        self._connected_widgets.append(self._send_btn)
+        ttk.Button(act_frame, text="Read from device",
+                   command=self._read_from_device).pack(fill=tk.X, padx=6, pady=3)
+        self._connected_widgets.append(
+            act_frame.winfo_children()[-1])
+
+        # ---- Result label ----
+        self._result_lbl = ttk.Label(left, text="", font=("Courier New", 9),
+                                     foreground="#226699", wraplength=300, justify="left")
+        self._result_lbl.pack(anchor="w", padx=6)
+
+        # ---- Residuals plot ----
+        plot_frame = ttk.LabelFrame(right, text="Residuals  (T_calibrated − T_reference)")
+        plot_frame.pack(fill=tk.BOTH, expand=True)
+        self._plot_frame = plot_frame
+
+        self._sync_ui_state(False)
+
+    # ------------------------------------------------------------------ #
+
+    def _add_point(self):
+        try:
+            tm = float(self._meas_entry.get().replace(",", "."))
+            tr = float(self._ref_entry.get().replace(",", "."))
+        except ValueError:
+            messagebox.showerror("Input error", "Enter valid numbers for both temperatures")
+            return
+        self._points.append((tm, tr))
+        self._point_list.insert(tk.END, f"{tm:9.4f}  →  {tr:9.4f}")
+        self._meas_entry.delete(0, tk.END)
+        self._ref_entry.delete(0, tk.END)
+        self._meas_entry.focus()
+        self._coeffs = None
+        self._send_btn.config(state="disabled")
+        self._result_lbl.config(text="")
+
+    def _remove_point(self):
+        sel = self._point_list.curselection()
+        if not sel:
+            return
+        idx = sel[0]
+        self._point_list.delete(idx)
+        self._points.pop(idx)
+        self._coeffs = None
+        self._send_btn.config(state="disabled")
+
+    def _fit(self):
+        import numpy as np
+
+        if len(self._points) < 2:
+            messagebox.showerror("Not enough points",
+                                 "Add at least 2 calibration points before fitting.")
+            return
+        degree = self._degree_var.get()
+        if len(self._points) <= degree:
+            messagebox.showerror("Not enough points",
+                                 f"Degree-{degree} fit needs at least {degree + 1} points.")
+            return
+
+        t_raw = np.array([p[0] for p in self._points])
+        t_ref = np.array([p[1] for p in self._points])
+
+        # Fit T_ref = a0 + a1*T + a2*T^2 + a3*T^3 (polynomial of raw temp)
+        coeffs_np = np.polyfit(t_raw, t_ref, deg=degree)
+        # np.polyfit returns [a_n, ..., a_1, a_0] (highest degree first)
+        coeffs_np = coeffs_np[::-1]  # reverse to [a0, a1, a2, a3]
+
+        # Pad to 4 coefficients (a0..a3)
+        full = list(coeffs_np) + [0.0] * (4 - len(coeffs_np))
+        self._coeffs = full[:4]
+
+        # Compute calibrated temperatures and residuals
+        def poly(t, c):
+            return c[0] + c[1]*t + c[2]*t**2 + c[3]*t**3
+
+        t_cal = np.array([poly(t, self._coeffs) for t in t_raw])
+        residuals = t_cal - t_ref
+        rms = float(np.sqrt(np.mean(residuals**2)))
+        max_err = float(np.max(np.abs(residuals)))
+
+        # Display result
+        coeff_str = "\n".join(
+            f"  a{i} = {v:+.6e}" for i, v in enumerate(self._coeffs))
+        self._result_lbl.config(
+            text=f"Fitted coefficients:\n{coeff_str}\n\n"
+                 f"RMS residual: {rms*1000:.2f} m°C\n"
+                 f"Max |error|:  {max_err*1000:.2f} m°C")
+
+        self._send_btn.config(state="normal" if self.device.is_connected() else "disabled")
+        self._draw_residuals(t_raw, t_ref, residuals)
+
+    def _draw_residuals(self, t_raw, t_ref, residuals):
+        import numpy as np
+        import matplotlib
+        matplotlib.use("TkAgg")
+        import matplotlib.pyplot as plt
+        from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
+        for w in self._plot_frame.winfo_children():
+            w.destroy()
+
+        res_mc = residuals * 1000  # convert to m°C
+        max_abs = float(np.max(np.abs(res_mc)))
+
+        # Ensure y-axis always shows a readable range (minimum ±0.5 m°C)
+        y_margin = max(max_abs * 1.4, 0.5)
+
+        fig, ax = plt.subplots(figsize=(5, 3), tight_layout=True)
+        ax.axhline(0, color="gray", linewidth=0.8, linestyle="--")
+        ax.scatter(t_ref, res_mc, color="#226699", zorder=3, s=50)
+        ax.set_ylim(-y_margin, y_margin)
+        ax.set_xlabel("T reference [°C]")
+        ax.set_ylabel("Residual [m°C]")
+        ax.set_title(f"Calibration residuals  (max {max_abs:.3f} m°C)")
+        ax.grid(True, alpha=0.3)
+        ax.yaxis.set_major_formatter(plt.FormatStrFormatter("%.3f"))
+
+        canvas = FigureCanvasTkAgg(fig, master=self._plot_frame)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+        plt.close(fig)
+
+    def _send_to_device(self):
+        if self._coeffs is None:
+            messagebox.showerror("No fit", "Fit the polynomial first.")
+            return
+        a0, a1, a2, a3 = self._coeffs
+        cmd = f"CAL:COEF {a0:.8e},{a1:.8e},{a2:.8e},{a3:.8e}"
+        if not self.safe_write(cmd):
+            return
+        self.log_pane.log(f"Calibration coefficients sent: {cmd}", "ok")
+
+    def _read_from_device(self):
+        resp = self.safe_query("CAL:COEF?")
+        if resp is None:
+            return
+        state_resp = self.safe_query("CAL:STAT?")
+        date_resp  = self.safe_query("CAL:DATE?")
+        parts = [p.strip() for p in resp.split(",")]
+        if len(parts) == 4:
+            try:
+                coeffs = [float(p) for p in parts]
+                self._coeffs = coeffs
+                self._send_btn.config(state="normal")
+                coeff_str = "\n".join(
+                    f"  a{i} = {v:+.6e}" for i, v in enumerate(coeffs))
+                state_str = f"active={state_resp}" if state_resp else ""
+                date_str  = f"  date={date_resp}"  if date_resp  else ""
+                self._result_lbl.config(
+                    text=f"Coefficients from device:\n{coeff_str}\n{state_str}{date_str}")
+            except ValueError:
+                self.log_pane.log(f"Failed to parse CAL:COEF? response: {resp}", "error")
+
+
+# ===========================================================================
 # DFUTab
 # ===========================================================================
 
@@ -1907,6 +2139,7 @@ class SDTApp:
         self.sys_tab     = SystemTab(self.notebook, **common)
         self.config_tab  = ConfigTab(self.notebook, **common)
         self.meas_tab    = MeasurementsTab(self.notebook, **common, root=self.root)
+        self.cal_tab     = CalibrationTab(self.notebook, **common)
         self.dfu_tab     = DFUTab(self.notebook, **common, root=self.root)
         self.console_tab = ConsoleTab(self.notebook, **common)
 
@@ -1918,6 +2151,7 @@ class SDTApp:
             (self.sys_tab,     "System"),
             (self.config_tab,  "Config"),
             (self.meas_tab,    "Measurements"),
+            (self.cal_tab,     "Calibration"),
             (self.dfu_tab,     "DFU Programmer"),
             (self.console_tab, "Console"),
         ]
@@ -1936,7 +2170,7 @@ class SDTApp:
             idx = self.notebook.index(self.notebook.select())
             tabs_list = [self.conn_tab, self.sensor_tab, self.tmp117_tab,
                          self.disp_tab, self.sys_tab, self.config_tab,
-                         self.meas_tab, self.dfu_tab, self.console_tab]
+                         self.meas_tab, self.cal_tab, self.dfu_tab, self.console_tab]
             tab = tabs_list[idx]
             if hasattr(tab, "on_tab_selected"):
                 tab.on_tab_selected()

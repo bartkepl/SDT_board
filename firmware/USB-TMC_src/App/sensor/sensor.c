@@ -10,6 +10,7 @@
 #include <tmp117.h>
 #include <display.h>
 #include <Utils.h>
+#include <flash.h>
 
 SensorData_t g_sensor = {0};
 
@@ -25,6 +26,16 @@ static uint8_t s_sht45_was_valid  = 0;
 static void Sensor_SetPendingError(SensorError_t err) {
     if (s_pending_error == SENSOR_ERR_NONE)
         s_pending_error = err;
+}
+
+/* Apply polynomial calibration to raw temperature if calibration is active. */
+static float Cal_ApplyToTemp(float t)
+{
+    if (!g_config.cal_active)
+        return t;
+    float t2 = t * t;
+    float t3 = t2 * t;
+    return g_config.cal_a0 + g_config.cal_a1 * t + g_config.cal_a2 * t2 + g_config.cal_a3 * t3;
 }
 
 SensorError_t Sensor_GetAndClearError(void) {
@@ -120,7 +131,7 @@ void Sensor_Task(void)
 
             if (g_tmp117.ucValidFlag)
             {
-                g_sensor.fTemp = g_tmp117.fTemp;
+                g_sensor.fTemp = Cal_ApplyToTemp(g_tmp117.fTemp);
                 g_sensor.usSensorId = g_tmp117.usId;
                 g_sensor.fHum = 0;
                 g_sensor.ucValidFlag = true;
@@ -148,7 +159,7 @@ void Sensor_Task(void)
 
             if (g_sht45.ucValidFlag)
             {
-                g_sensor.fTemp = g_sht45.fTemp;
+                g_sensor.fTemp = Cal_ApplyToTemp(g_sht45.fTemp);
                 g_sensor.fHum = g_sht45.fHum;
                 g_sensor.usSensorId = (uint32_t)g_sht45.uSerialNumber;
                 g_sensor.ucValidFlag = true;
@@ -181,13 +192,13 @@ void Sensor_Task(void)
             // For dual sensor mode, use SHT45 data (has temp and humidity)
             if (g_sht45.ucValidFlag)
             {
-                g_sensor.fTemp = g_sht45.fTemp;
+                g_sensor.fTemp = Cal_ApplyToTemp(g_sht45.fTemp);
                 g_sensor.fHum = g_sht45.fHum;
                 g_sensor.ucValidFlag = true;
             }
             else if (g_tmp117.ucValidFlag)
             {
-                g_sensor.fTemp = g_tmp117.fTemp;
+                g_sensor.fTemp = Cal_ApplyToTemp(g_tmp117.fTemp);
                 g_sensor.fHum = 0;
                 g_sensor.ucValidFlag = true;
             }

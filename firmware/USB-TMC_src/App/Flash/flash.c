@@ -45,7 +45,16 @@ const SDT_Config_t s_default_flash = {
     .tmp117AlertHighRaw = 10240, /* 80.0 °C / 0.0078125 */
     .tmp117AlertLowRaw  = -1280, /* -10.0 °C / 0.0078125 */
     ._r3                = {0u, 0u},
-    /* CRC intentionally 0 — DEFAULT is validated by magic only */
+    /* Calibration defaults — identity polynomial, inactive */
+    .cal_a0             = 0.0f,
+    .cal_a1             = 1.0f,
+    .cal_a2             = 0.0f,
+    .cal_a3             = 0.0f,
+    .cal_active         = 0u,
+    ._r4                = 0u,
+    .cal_date           = "----------",
+    ._r5                = {0u, 0u, 0u, 0u},
+    /* CRC intentionally 0 — DEFAULT is validated by magic + version only */
     .crc32              = 0u,
     ._pad               = 0u,
 };
@@ -61,7 +70,7 @@ static const uint8_t __primary_reserved[sizeof(SDT_Config_t)];
 __attribute__((section(".config_backup"), used))
 static const uint8_t __backup_reserved[sizeof(SDT_Config_t)];
 
-/* Hardcoded fallback — identical to DEFAULT, used when DEFAULT flash is corrupt */
+/* Hardcoded fallback — identical to DEFAULT, used when DEFAULT flash is corrupt or wrong version */
 static const SDT_Config_t s_fallback = {
     .magic=CONFIG_MAGIC, .version=CONFIG_VERSION,
     .dispBrightness=20u, .dispState=1u, .dispSource=0u, ._r0=0u,
@@ -70,6 +79,8 @@ static const SDT_Config_t s_fallback = {
     .tmp117Mode=0u, .tmp117ConvRate=4u, .tmp117Avg=1u, ._r2=0u,
     .tmp117ReadPeriodMs=1000u,
     .tmp117AlertHighRaw=10240, .tmp117AlertLowRaw=-1280, ._r3={0u,0u},
+    .cal_a0=0.0f, .cal_a1=1.0f, .cal_a2=0.0f, .cal_a3=0.0f,
+    .cal_active=0u, ._r4=0u, .cal_date="----------", ._r5={0u,0u,0u,0u},
     .crc32=0u, ._pad=0u,
 };
 
@@ -80,11 +91,11 @@ bool         g_config_dirty = false;
 
 /* ===== Internal helpers ============================================== */
 
-/* CRC32 over the first 32 bytes (8 words) before the crc32 field */
+/* CRC32 over the first 64 bytes (16 words) before the crc32 field */
 static uint32_t crc32_compute(const SDT_Config_t *cfg)
 {
     /* HAL_CRC_Calculate resets the CRC unit before computation */
-    return HAL_CRC_Calculate(&hcrc, (uint32_t *)(uintptr_t)cfg, 8u);
+    return HAL_CRC_Calculate(&hcrc, (uint32_t *)(uintptr_t)cfg, 16u);
 }
 
 static bool block_magic_ok(const SDT_Config_t *cfg)
@@ -110,6 +121,8 @@ static void clear_padding(SDT_Config_t *cfg)
     cfg->_r1[0] = cfg->_r1[1] = cfg->_r1[2] = 0u;
     cfg->_r2 = 0u;
     cfg->_r3[0] = cfg->_r3[1] = 0u;
+    cfg->_r4 = 0u;
+    cfg->_r5[0] = cfg->_r5[1] = cfg->_r5[2] = cfg->_r5[3] = 0u;
     cfg->_pad = 0u;
 }
 
@@ -217,12 +230,12 @@ void Config_Init(void)
     }
 
     /* 3. First boot or both regions corrupt — bootstrap from DEFAULT.
-     *    Read DEFAULT (magic-only, no CRC check); fall back to hardcoded
-     *    values if DEFAULT flash is also missing/corrupt.
+     *    Read DEFAULT (magic + version check, no CRC); fall back to hardcoded
+     *    values if DEFAULT flash is missing, corrupt, or a different version.
      *    Compute proper CRC and save to PRIMARY + BACKUP so next boot
      *    takes the fast path (step 1) and dirty flag stays false.      */
     flash_read_block(CONFIG_ADDR_DEFAULT, &tmp);
-    if (!block_magic_ok(&tmp)) {
+    if (!block_magic_ok(&tmp) || tmp.version != CONFIG_VERSION) {
         tmp = s_fallback;
     }
     clear_padding(&tmp);
@@ -280,7 +293,7 @@ ConfigStatus_t Config_Recall(void)
     SDT_Config_t tmp;
     flash_read_block(CONFIG_ADDR_DEFAULT, &tmp);
 
-    if (!block_magic_ok(&tmp)) {
+    if (!block_magic_ok(&tmp) || tmp.version != CONFIG_VERSION) {
         tmp = s_fallback;
     }
 
