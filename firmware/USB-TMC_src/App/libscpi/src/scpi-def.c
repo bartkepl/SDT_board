@@ -754,7 +754,7 @@ static scpi_result_t SCPI_ConfigDirtyQ(scpi_t *context) {
 //------------------------------------------------------------------//
 
 static scpi_result_t SCPI_CalCoeff(scpi_t *context) {
-	double a0, a1, a2, a3;
+	double a0, a1, a2, a3, a4, a5;
 	if (!SCPI_ParamDouble(context, &a0, TRUE))
 		SCPI_PUSH_ERR(context, SCPI_ERROR_MISSING_PARAMETER);
 	if (!SCPI_ParamDouble(context, &a1, TRUE))
@@ -763,20 +763,27 @@ static scpi_result_t SCPI_CalCoeff(scpi_t *context) {
 		SCPI_PUSH_ERR(context, SCPI_ERROR_MISSING_PARAMETER);
 	if (!SCPI_ParamDouble(context, &a3, TRUE))
 		SCPI_PUSH_ERR(context, SCPI_ERROR_MISSING_PARAMETER);
+	if (!SCPI_ParamDouble(context, &a4, TRUE))
+		SCPI_PUSH_ERR(context, SCPI_ERROR_MISSING_PARAMETER);
+	if (!SCPI_ParamDouble(context, &a5, TRUE))
+		SCPI_PUSH_ERR(context, SCPI_ERROR_MISSING_PARAMETER);
 
 	g_config.cal_a0 = (float)a0;
 	g_config.cal_a1 = (float)a1;
 	g_config.cal_a2 = (float)a2;
 	g_config.cal_a3 = (float)a3;
+	g_config.cal_a4 = (float)a4;
+	g_config.cal_a5 = (float)a5;
 	Config_MarkDirty();
 	return SCPI_RES_OK;
 }
 
 static scpi_result_t SCPI_CalCoeffQ(scpi_t *context) {
-	char buf[64];
-	int len = snprintf(buf, sizeof(buf), "%e,%e,%e,%e",
+	char buf[96];
+	int len = snprintf(buf, sizeof(buf), "%e,%e,%e,%e,%e,%e",
 	    (double)g_config.cal_a0, (double)g_config.cal_a1,
-	    (double)g_config.cal_a2, (double)g_config.cal_a3);
+	    (double)g_config.cal_a2, (double)g_config.cal_a3,
+	    (double)g_config.cal_a4, (double)g_config.cal_a5);
 	SCPI_ResultCharacters(context, buf, (size_t)len);
 	return SCPI_RES_OK;
 }
@@ -819,6 +826,8 @@ static scpi_result_t SCPI_CalReset(scpi_t *context) {
 	g_config.cal_a1 = 1.0f;
 	g_config.cal_a2 = 0.0f;
 	g_config.cal_a3 = 0.0f;
+	g_config.cal_a4 = 0.0f;
+	g_config.cal_a5 = 0.0f;
 	g_config.cal_active = 0u;
 	memcpy(g_config.cal_date, "----------", 10u);
 	Config_MarkDirty();

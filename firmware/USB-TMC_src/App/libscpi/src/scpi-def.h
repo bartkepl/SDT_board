@@ -14,7 +14,11 @@
 #define SCPI_IDN_MANUFACTURER "bartkepl"
 #define SCPI_IDN_MODEL        "SDT"
 #define SCPI_IDN_SERIAL       "0001"
-#define SCPI_IDN_FW           "3.2"
+#if defined(DEBUG)
+#define SCPI_IDN_FW           "3.3.D"
+#else
+#define SCPI_IDN_FW           "3.3"
+#endif
 
 extern scpi_t scpi_context;
 

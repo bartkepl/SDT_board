@@ -133,10 +133,12 @@ class _ScpiMixin:
             self.log_pane.log(f"{cmd} → {resp}", "ok")
             self.status_bar.set_last_cmd(cmd)
             return resp
-        except pyvisa.errors.VisaIOError:
+        except (pyvisa.errors.VisaIOError, ConnectionError):
             self.log_pane.log(f"COMM ERROR [{cmd}]: connection lost", "error")
             self.status_bar.set_last_cmd(cmd)
             self.device.disconnect()
+            if self.on_comm_error:
+                self.on_comm_error()
             return None
         except Exception as e:
             self.log_pane.log(f"ERROR [{cmd}]: {e}", "error")
@@ -149,10 +151,12 @@ class _ScpiMixin:
             self.log_pane.log(f"{cmd}", "ok")
             self.status_bar.set_last_cmd(cmd)
             return True
-        except pyvisa.errors.VisaIOError:
+        except (pyvisa.errors.VisaIOError, ConnectionError):
             self.log_pane.log(f"COMM ERROR [{cmd}]: connection lost", "error")
             self.status_bar.set_last_cmd(cmd)
             self.device.disconnect()
+            if self.on_comm_error:
+                self.on_comm_error()
             return False
         except Exception as e:
             self.log_pane.log(f"ERROR [{cmd}]: {e}", "error")
@@ -367,6 +371,7 @@ class _BaseTab(_ScpiMixin):
         self.status_bar = status_bar
         self.frame = ttk.Frame(notebook, padding=6)
         self._connected_widgets: List[tk.Widget] = []
+        self.on_comm_error: Optional[Callable] = None
 
     def _sync_ui_state(self, connected: bool):
         state = "normal" if connected else "disabled"
@@ -376,16 +381,28 @@ class _BaseTab(_ScpiMixin):
             except tk.TclError:
                 pass
 
+    def _trigger_comm_error(self):
+        """Disconnect device and notify the app (safe from any thread)."""
+        self.device.disconnect()
+        if self.on_comm_error:
+            self.frame.after(0, self.on_comm_error)
+
 
 # ===========================================================================
 # ConnectionTab
 # ===========================================================================
 
 class ConnectionTab(_BaseTab):
+    _RECONNECT_INTERVAL_MS = 3000
+    _RECONNECT_MAX_ATTEMPTS = 6   # 6 × 3s = 18s
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.on_connect_callback: Optional[Callable] = None
         self.on_disconnect_callback: Optional[Callable] = None
+        self._last_resource: Optional[str] = None
+        self._reconnect_attempt: int = 0
+        self._reconnect_pending: bool = False
         self._build()
 
     def _build(self):
@@ -459,6 +476,8 @@ class ConnectionTab(_BaseTab):
             self.log_pane.log(f"Connection failed: {e}", "error")
             return
 
+        self._last_resource = resource
+        self._reconnect_pending = False
         self.log_pane.log(f"Connected to {resource}", "ok")
         self._conn_status_lbl.config(text=f"Status: Connected — {resource}",
                                      foreground="#22aa44")
@@ -477,6 +496,8 @@ class ConnectionTab(_BaseTab):
         if not self.device.is_connected():
             messagebox.showerror("Error", "Not connected")
             return
+        self._last_resource = None   # manual disconnect — no auto-reconnect
+        self._reconnect_pending = False
         self.device.disconnect()
         self.state.sensor_type = None
         self._conn_status_lbl.config(text="Status: Disconnected", foreground="#cc3333")
@@ -484,6 +505,56 @@ class ConnectionTab(_BaseTab):
         self.log_pane.log("Disconnected", "warn")
         if self.on_disconnect_callback:
             self.on_disconnect_callback()
+
+    def _handle_external_disconnect(self):
+        """Called when a comm error caused an unexpected disconnect."""
+        self._reconnect_pending = False
+        self.state.sensor_type = None
+        self._sync_ui_state(False)
+        if self.on_disconnect_callback:
+            self.on_disconnect_callback()
+        if self._last_resource:
+            self._reconnect_attempt = 0
+            self._schedule_reconnect()
+
+    def _schedule_reconnect(self):
+        if self._reconnect_pending:
+            return
+        if self._reconnect_attempt >= self._RECONNECT_MAX_ATTEMPTS:
+            self._conn_status_lbl.config(
+                text="Status: Rozłączono — reconnect nieudany", foreground="#cc3333")
+            self.log_pane.log("Auto-reconnect nieudany po wielu próbach", "warn")
+            return
+        self._reconnect_pending = True
+        self._reconnect_attempt += 1
+        self._conn_status_lbl.config(
+            text=f"Status: Reconnect... (próba {self._reconnect_attempt}/"
+                 f"{self._RECONNECT_MAX_ATTEMPTS})",
+            foreground="#cc8800")
+        self.frame.after(self._RECONNECT_INTERVAL_MS, self._try_reconnect)
+
+    def _try_reconnect(self):
+        self._reconnect_pending = False
+        if self.device.is_connected():
+            return  # already reconnected by user
+        try:
+            self.device.connect(self._last_resource)
+        except Exception:
+            self._schedule_reconnect()
+            return
+        # Success
+        resource = self._last_resource
+        self.log_pane.log(f"Auto-reconnect udany: {resource}", "ok")
+        self._conn_status_lbl.config(
+            text=f"Status: Połączono (auto) — {resource}", foreground="#22aa44")
+        self._sync_ui_state(True)
+        sensor_type = None
+        resp = self.safe_query("SENSor:TYPE?")
+        if resp:
+            sensor_type = resp.strip('"')
+            self.state.sensor_type = sensor_type
+        if self.on_connect_callback:
+            self.on_connect_callback(resource, sensor_type)
 
     def _on_idn(self):
         resp = self.safe_query("*IDN?")
@@ -1186,14 +1257,14 @@ class SystemTab(_BaseTab):
         if messagebox.askyesno("Confirm Bootloader",
                 "Device will restart into DFU bootloader mode.\n\nContinue?"):
             self.safe_write("SYSTem:BOOTloader:ENter")
-            self.device.disconnect()
             self.log_pane.log("Device entered bootloader — use DFU Programmer tab to flash.", "warn")
+            self._trigger_comm_error()
 
     def _restart_device(self):
         if messagebox.askyesno("Confirm Restart", "Device will restart. Continue?"):
             self.safe_write("SYSTem:RST")
-            self.device.disconnect()
-            self.log_pane.log("Device restarted — reconnect to continue.", "warn")
+            self.log_pane.log("Device restarted — reconnecting automatically...", "warn")
+            self._trigger_comm_error()
 
 
 # ===========================================================================
@@ -1428,7 +1499,7 @@ class CalibrationTab(_BaseTab):
       4. Click "Send to device" — writes coefficients via SCPI CAL: subsystem.
     """
 
-    MAX_DEGREE = 3
+    MAX_DEGREE = 5
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -1477,12 +1548,14 @@ class CalibrationTab(_BaseTab):
                    command=self._remove_point).pack(anchor="w", padx=6, pady=(0, 4))
 
         # ---- Polynomial degree ----
-        deg_frame = ttk.LabelFrame(left, text="Polynomial degree")
+        deg_frame = ttk.LabelFrame(left, text="Stopień wielomianu")
         deg_frame.pack(fill=tk.X, pady=(0, 6))
         self._degree_var = tk.IntVar(value=3)
+        inner = ttk.Frame(deg_frame)
+        inner.pack(padx=6, pady=4)
         for d in range(1, self.MAX_DEGREE + 1):
-            ttk.Radiobutton(deg_frame, text=f"  degree {d}", variable=self._degree_var,
-                            value=d).pack(anchor="w", padx=6)
+            ttk.Radiobutton(inner, text=str(d), variable=self._degree_var,
+                            value=d).grid(row=0, column=d - 1, padx=6)
 
         # ---- Actions ----
         act_frame = ttk.LabelFrame(left, text="Actions")
@@ -1493,10 +1566,16 @@ class CalibrationTab(_BaseTab):
                                      command=self._send_to_device, state="disabled")
         self._send_btn.pack(fill=tk.X, padx=6, pady=3)
         self._connected_widgets.append(self._send_btn)
-        ttk.Button(act_frame, text="Read from device",
-                   command=self._read_from_device).pack(fill=tk.X, padx=6, pady=3)
-        self._connected_widgets.append(
-            act_frame.winfo_children()[-1])
+
+        self._read_btn = ttk.Button(act_frame, text="Read from device",
+                                     command=self._read_from_device)
+        self._read_btn.pack(fill=tk.X, padx=6, pady=3)
+        self._connected_widgets.append(self._read_btn)
+
+        self._reset_btn = ttk.Button(act_frame, text="Reset to identity (no correction)",
+                                      command=self._reset_on_device)
+        self._reset_btn.pack(fill=tk.X, padx=6, pady=3)
+        self._connected_widgets.append(self._reset_btn)
 
         # ---- Result label ----
         self._result_lbl = ttk.Label(left, text="", font=("Courier New", 9),
@@ -1559,24 +1638,26 @@ class CalibrationTab(_BaseTab):
         # np.polyfit returns [a_n, ..., a_1, a_0] (highest degree first)
         coeffs_np = coeffs_np[::-1]  # reverse to [a0, a1, a2, a3]
 
-        # Pad to 4 coefficients (a0..a3)
-        full = list(coeffs_np) + [0.0] * (4 - len(coeffs_np))
-        self._coeffs = full[:4]
+        # Pad to 6 coefficients (a0..a5)
+        full = list(coeffs_np) + [0.0] * (6 - len(coeffs_np))
+        self._coeffs = full[:6]
 
         # Compute calibrated temperatures and residuals
         def poly(t, c):
-            return c[0] + c[1]*t + c[2]*t**2 + c[3]*t**3
+            return c[0] + c[1]*t + c[2]*t**2 + c[3]*t**3 + c[4]*t**4 + c[5]*t**5
 
         t_cal = np.array([poly(t, self._coeffs) for t in t_raw])
         residuals = t_cal - t_ref
         rms = float(np.sqrt(np.mean(residuals**2)))
         max_err = float(np.max(np.abs(residuals)))
 
-        # Display result
+        # Display result — skip trailing zero coefficients in label
+        last_nonzero = max((i for i, v in enumerate(self._coeffs) if abs(v) > 1e-30),
+                           default=1)
         coeff_str = "\n".join(
-            f"  a{i} = {v:+.6e}" for i, v in enumerate(self._coeffs))
+            f"  a{i} = {v:+.6e}" for i, v in enumerate(self._coeffs[:last_nonzero + 1]))
         self._result_lbl.config(
-            text=f"Fitted coefficients:\n{coeff_str}\n\n"
+            text=f"Fitted coefficients (deg {degree}):\n{coeff_str}\n\n"
                  f"RMS residual: {rms*1000:.2f} m°C\n"
                  f"Max |error|:  {max_err*1000:.2f} m°C")
 
@@ -1618,11 +1699,11 @@ class CalibrationTab(_BaseTab):
         if self._coeffs is None:
             messagebox.showerror("No fit", "Fit the polynomial first.")
             return
-        a0, a1, a2, a3 = self._coeffs
-        cmd = f"CAL:COEF {a0:.8e},{a1:.8e},{a2:.8e},{a3:.8e}"
+        a0, a1, a2, a3, a4, a5 = self._coeffs
+        cmd = f"CAL:COEF {a0:.8e},{a1:.8e},{a2:.8e},{a3:.8e},{a4:.8e},{a5:.8e}"
         if not self.safe_write(cmd):
             return
-        self.log_pane.log(f"Calibration coefficients sent: {cmd}", "ok")
+        self.log_pane.log("Calibration coefficients sent to device", "ok")
 
     def _read_from_device(self):
         resp = self.safe_query("CAL:COEF?")
@@ -1631,19 +1712,30 @@ class CalibrationTab(_BaseTab):
         state_resp = self.safe_query("CAL:STAT?")
         date_resp  = self.safe_query("CAL:DATE?")
         parts = [p.strip() for p in resp.split(",")]
-        if len(parts) == 4:
+        if len(parts) == 6:
             try:
-                coeffs = [float(p) for p in parts]
-                self._coeffs = coeffs
+                self._coeffs = [float(p) for p in parts]
                 self._send_btn.config(state="normal")
                 coeff_str = "\n".join(
-                    f"  a{i} = {v:+.6e}" for i, v in enumerate(coeffs))
-                state_str = f"active={state_resp}" if state_resp else ""
-                date_str  = f"  date={date_resp}"  if date_resp  else ""
+                    f"  a{i} = {v:+.6e}" for i, v in enumerate(self._coeffs))
+                active_str = f"\nactive = {state_resp}" if state_resp else ""
+                date_str   = f"\ndate   = {date_resp}"  if date_resp  else ""
                 self._result_lbl.config(
-                    text=f"Coefficients from device:\n{coeff_str}\n{state_str}{date_str}")
+                    text=f"Coefficients from device:\n{coeff_str}{active_str}{date_str}")
             except ValueError:
                 self.log_pane.log(f"Failed to parse CAL:COEF? response: {resp}", "error")
+        else:
+            self.log_pane.log(f"Unexpected CAL:COEF? response: {resp}", "error")
+
+    def _reset_on_device(self):
+        if not self.safe_write("CAL:RES"):
+            return
+        self._coeffs = [0.0, 1.0, 0.0, 0.0, 0.0, 0.0]
+        self._send_btn.config(state="disabled")
+        self._result_lbl.config(
+            text="Reset to identity:\n  a0 = +0.0  a1 = +1.0\n  a2..a5 = 0.0\n"
+                 "(no temperature correction active)")
+        self.log_pane.log("Calibration reset to identity on device", "ok")
 
 
 # ===========================================================================
@@ -1827,7 +1919,7 @@ class DFUTab(_BaseTab):
                     self.device.write("SYSTem:BOOTloader:ENter")
                 except Exception as e:
                     self._flash_log_append(f"[WARN] Command failed (device may have reset): {e}\n")
-                self.device.disconnect()
+                self._trigger_comm_error()
 
             self._set_step(f"Waiting {DFU_WAIT_SECONDS}s for DFU enumeration…")
             self._flash_log_append(f"[INFO] Waiting {DFU_WAIT_SECONDS}s for DFU device to enumerate\n")
@@ -2163,6 +2255,12 @@ class SDTApp:
         self.conn_tab.on_connect_callback    = self._on_device_connected
         self.conn_tab.on_disconnect_callback = self._on_device_disconnected
 
+        all_tabs = [self.conn_tab, self.sensor_tab, self.tmp117_tab, self.disp_tab,
+                    self.sys_tab, self.config_tab, self.meas_tab,
+                    self.cal_tab, self.dfu_tab, self.console_tab]
+        for tab in all_tabs:
+            tab.on_comm_error = self.conn_tab._handle_external_disconnect
+
         self.log_pane.log("SDT Board Companion started — select a VISA resource and click Connect.", "info")
 
     def _on_tab_changed(self, _event=None):
@@ -2183,7 +2281,8 @@ class SDTApp:
         self.tmp117_tab.update_sensor_availability(sensor_type)
         self.sensor_tab.update_sensor_availability(sensor_type)
         for tab in (self.sensor_tab, self.tmp117_tab, self.disp_tab,
-                    self.sys_tab, self.config_tab, self.meas_tab, self.console_tab):
+                    self.sys_tab, self.config_tab, self.meas_tab,
+                    self.cal_tab, self.console_tab):
             tab._sync_ui_state(True)
 
     def _on_device_disconnected(self):
@@ -2191,7 +2290,8 @@ class SDTApp:
         self.status_bar.set_sensor_type(None)
         self.meas_tab.stop_polling_if_active()
         for tab in (self.sensor_tab, self.tmp117_tab, self.disp_tab,
-                    self.sys_tab, self.config_tab, self.meas_tab, self.console_tab):
+                    self.sys_tab, self.config_tab, self.meas_tab,
+                    self.cal_tab, self.console_tab):
             tab._sync_ui_state(False)
 
     def _on_close(self):

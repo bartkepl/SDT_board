@@ -45,11 +45,13 @@ const SDT_Config_t s_default_flash = {
     .tmp117AlertHighRaw = 10240, /* 80.0 °C / 0.0078125 */
     .tmp117AlertLowRaw  = -1280, /* -10.0 °C / 0.0078125 */
     ._r3                = {0u, 0u},
-    /* Calibration defaults — identity polynomial, inactive */
+    /* Calibration defaults — identity polynomial (degree 5), inactive */
     .cal_a0             = 0.0f,
     .cal_a1             = 1.0f,
     .cal_a2             = 0.0f,
     .cal_a3             = 0.0f,
+    .cal_a4             = 0.0f,
+    .cal_a5             = 0.0f,
     .cal_active         = 0u,
     ._r4                = 0u,
     .cal_date           = "----------",
@@ -79,7 +81,7 @@ static const SDT_Config_t s_fallback = {
     .tmp117Mode=0u, .tmp117ConvRate=4u, .tmp117Avg=1u, ._r2=0u,
     .tmp117ReadPeriodMs=1000u,
     .tmp117AlertHighRaw=10240, .tmp117AlertLowRaw=-1280, ._r3={0u,0u},
-    .cal_a0=0.0f, .cal_a1=1.0f, .cal_a2=0.0f, .cal_a3=0.0f,
+    .cal_a0=0.0f, .cal_a1=1.0f, .cal_a2=0.0f, .cal_a3=0.0f, .cal_a4=0.0f, .cal_a5=0.0f,
     .cal_active=0u, ._r4=0u, .cal_date="----------", ._r5={0u,0u,0u,0u},
     .crc32=0u, ._pad=0u,
 };
@@ -91,11 +93,11 @@ bool         g_config_dirty = false;
 
 /* ===== Internal helpers ============================================== */
 
-/* CRC32 over the first 64 bytes (16 words) before the crc32 field */
+/* CRC32 over the first 72 bytes (18 words) before the crc32 field */
 static uint32_t crc32_compute(const SDT_Config_t *cfg)
 {
     /* HAL_CRC_Calculate resets the CRC unit before computation */
-    return HAL_CRC_Calculate(&hcrc, (uint32_t *)(uintptr_t)cfg, 16u);
+    return HAL_CRC_Calculate(&hcrc, (uint32_t *)(uintptr_t)cfg, 18u);
 }
 
 static bool block_magic_ok(const SDT_Config_t *cfg)

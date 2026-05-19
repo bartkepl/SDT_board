@@ -62,6 +62,7 @@ nav:
     - SYSTem: scpi/system.md
     - SENSor: scpi/sensor.md
     - DISPlay: scpi/display.md
+    - CALibration: scpi/calibration.md
   - Sprzęt:
     - hardware/index.md
     - Czujniki: hardware/sensors.md

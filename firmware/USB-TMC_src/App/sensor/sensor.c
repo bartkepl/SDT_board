@@ -35,7 +35,14 @@ static float Cal_ApplyToTemp(float t)
         return t;
     float t2 = t * t;
     float t3 = t2 * t;
-    return g_config.cal_a0 + g_config.cal_a1 * t + g_config.cal_a2 * t2 + g_config.cal_a3 * t3;
+    float t4 = t3 * t;
+    float t5 = t4 * t;
+    return g_config.cal_a0
+         + g_config.cal_a1 * t
+         + g_config.cal_a2 * t2
+         + g_config.cal_a3 * t3
+         + g_config.cal_a4 * t4
+         + g_config.cal_a5 * t5;
 }
 
 SensorError_t Sensor_GetAndClearError(void) {
