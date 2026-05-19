@@ -40,6 +40,88 @@ DFU_TOOL_CANDIDATES = [
     ("STM32_Programmer_CLI", ["STM32_Programmer_CLI", "--version"]),
 ]
 
+# ---------------------------------------------------------------------------
+# Localisation (EN / PL)
+# ---------------------------------------------------------------------------
+
+_LANGS: dict[str, dict[str, str]] = {
+    "EN": {
+        # ConnectionTab — auto-reconnect
+        "reconnect_fail_status":  "Status: Disconnected — reconnect failed",
+        "reconnect_fail_log":     "Auto-reconnect failed after max attempts",
+        "reconnect_attempt":      "Status: Reconnecting... (attempt {n}/{max})",
+        "reconnect_ok_log":       "Auto-reconnect successful: {res}",
+        "reconnect_ok_status":    "Status: Connected (auto) — {res}",
+        # CalibrationTab
+        "cal_poly_degree":        "Polynomial degree",
+        # ConfigTab — frame titles
+        "cfg_title":              "Three-tier Configuration System",
+        "cfg_status_frame":       "Configuration Status",
+        "cfg_operations":         "Operations",
+        # ConfigTab — labels / buttons
+        "cfg_dirty_label":        "Unsaved RAM changes:",
+        "cfg_refresh_btn":        "Refresh",
+        "cfg_save_desc":          "Save current RAM config → PRIMARY + BACKUP (with CRC)",
+        "cfg_restore_desc":       "Restore PRIMARY from BACKUP (repair corrupted PRIMARY)",
+        "cfg_recall_desc":        "Restore factory defaults (DEFAULT → PRIMARY + BACKUP)",
+        # ConfigTab — dirty flag values
+        "cfg_yes":                "YES",
+        "cfg_no":                 "NO",
+        # ConfigTab — info text (multiline label)
+        "cfg_info_text": (
+            "DEFAULT  — factory defaults, baked into FLASH as part of firmware (addr 0x0801C000).\n"
+            "PRIMARY  — active config, loaded on startup (addr 0x0801C800).\n"
+            "BACKUP   — copy of PRIMARY, used when PRIMARY is corrupted (addr 0x0801D000).\n\n"
+            "Parameter changes (sensor, display) are held in RAM until explicitly saved\n"
+            "with SAVE. On reset the device reloads PRIMARY from FLASH."
+        ),
+        # ConfigTab — messagebox messages (called at event time)
+        "cfg_restore_msg":        "Restore PRIMARY from BACKUP?\nUnsaved changes in PRIMARY will be lost.",
+        "cfg_recall_msg":         "Restore factory defaults (DEFAULT)?\nPRIMARY and BACKUP will be overwritten.",
+    },
+    "PL": {
+        # ConnectionTab — auto-reconnect
+        "reconnect_fail_status":  "Status: Rozłączono — reconnect nieudany",
+        "reconnect_fail_log":     "Auto-reconnect nieudany po wielu próbach",
+        "reconnect_attempt":      "Status: Reconnect... (próba {n}/{max})",
+        "reconnect_ok_log":       "Auto-reconnect udany: {res}",
+        "reconnect_ok_status":    "Status: Połączono (auto) — {res}",
+        # CalibrationTab
+        "cal_poly_degree":        "Stopień wielomianu",
+        # ConfigTab — frame titles
+        "cfg_title":              "Trójwarstwowy system konfiguracji",
+        "cfg_status_frame":       "Stan konfiguracji",
+        "cfg_operations":         "Operacje",
+        # ConfigTab — labels / buttons
+        "cfg_dirty_label":        "Niezapisane zmiany w RAM:",
+        "cfg_refresh_btn":        "Odśwież",
+        "cfg_save_desc":          "Zapisz bieżącą konfigurację RAM → PRIMARY + BACKUP (z CRC)",
+        "cfg_restore_desc":       "Przywróć PRIMARY z BACKUP (naprawa uszkodzonego PRIMARY)",
+        "cfg_recall_desc":        "Przywróć ustawienia fabryczne (DEFAULT → PRIMARY + BACKUP)",
+        # ConfigTab — dirty flag values
+        "cfg_yes":                "TAK",
+        "cfg_no":                 "NIE",
+        # ConfigTab — info text (multiline label)
+        "cfg_info_text": (
+            "DEFAULT  — wartości fabryczne, zapisane w FLASH jako część firmware (adres 0x0801C000).\n"
+            "PRIMARY  — aktywna konfiguracja, wczytywana przy starcie (adres 0x0801C800).\n"
+            "BACKUP   — kopia PRIMARY, używana gdy PRIMARY jest uszkodzony (adres 0x0801D000).\n\n"
+            "Zmiany parametrów (czujnik, wyświetlacz) są przechowywane w RAM do momentu\n"
+            "jawnego zapisu komendą SAVE. Po resecie urządzenie wczytuje PRIMARY z FLASH."
+        ),
+        # ConfigTab — messagebox messages (called at event time)
+        "cfg_restore_msg":        "Przywrócić PRIMARY z bloku BACKUP?\nBieżące niezapisane zmiany w PRIMARY zostaną utracone.",
+        "cfg_recall_msg":         "Przywrócić ustawienia fabryczne (DEFAULT)?\nPRIMARY i BACKUP zostaną nadpisane wartościami domyślnymi.",
+    },
+}
+
+_current_lang: str = "EN"
+
+
+def tr(key: str, **kwargs: object) -> str:
+    """Return a translated string for the current language."""
+    return _LANGS[_current_lang][key].format(**kwargs)
+
 
 # ---------------------------------------------------------------------------
 # SCPIDevice — thin pyvisa wrapper
@@ -372,6 +454,17 @@ class _BaseTab(_ScpiMixin):
         self.frame = ttk.Frame(notebook, padding=6)
         self._connected_widgets: List[tk.Widget] = []
         self.on_comm_error: Optional[Callable] = None
+        self._tr_items: list = []  # (widget, key, format_kwargs)
+
+    def _tr(self, widget, key: str, **kwargs) -> object:
+        """Register a widget for automatic text refresh on language change."""
+        self._tr_items.append((widget, key, kwargs))
+        return widget
+
+    def refresh_lang(self) -> None:
+        """Update all registered translatable widgets to the current language."""
+        for widget, key, kwargs in self._tr_items:
+            widget.config(text=tr(key, **kwargs))
 
     def _sync_ui_state(self, connected: bool):
         state = "normal" if connected else "disabled"
@@ -400,6 +493,7 @@ class ConnectionTab(_BaseTab):
         super().__init__(*args, **kwargs)
         self.on_connect_callback: Optional[Callable] = None
         self.on_disconnect_callback: Optional[Callable] = None
+        self.on_lang_change: Optional[Callable] = None
         self._last_resource: Optional[str] = None
         self._reconnect_attempt: int = 0
         self._reconnect_pending: bool = False
@@ -451,8 +545,23 @@ class ConnectionTab(_BaseTab):
             ttk.Label(tip_frame, text=t, anchor="w").grid(row=i, column=0,
                                                            sticky="w", padx=8, pady=1)
 
+        # --- Language ---
+        lang_frame = ttk.LabelFrame(self.frame, text="Language / Język")
+        lang_frame.pack(fill=tk.X, pady=(0, 6))
+        self._lang_var = tk.StringVar(value=_current_lang)
+        for text, code in (("English", "EN"), ("Polski", "PL")):
+            ttk.Radiobutton(lang_frame, text=text, variable=self._lang_var,
+                            value=code, command=self._on_lang_change
+                            ).pack(side=tk.LEFT, padx=10, pady=4)
+
         self._sync_ui_state(False)
         self._on_refresh()
+
+    def _on_lang_change(self):
+        global _current_lang
+        _current_lang = self._lang_var.get()
+        if self.on_lang_change:
+            self.on_lang_change()
 
     def _on_refresh(self):
         try:
@@ -522,14 +631,14 @@ class ConnectionTab(_BaseTab):
             return
         if self._reconnect_attempt >= self._RECONNECT_MAX_ATTEMPTS:
             self._conn_status_lbl.config(
-                text="Status: Rozłączono — reconnect nieudany", foreground="#cc3333")
-            self.log_pane.log("Auto-reconnect nieudany po wielu próbach", "warn")
+                text=tr("reconnect_fail_status"), foreground="#cc3333")
+            self.log_pane.log(tr("reconnect_fail_log"), "warn")
             return
         self._reconnect_pending = True
         self._reconnect_attempt += 1
         self._conn_status_lbl.config(
-            text=f"Status: Reconnect... (próba {self._reconnect_attempt}/"
-                 f"{self._RECONNECT_MAX_ATTEMPTS})",
+            text=tr("reconnect_attempt",
+                    n=self._reconnect_attempt, max=self._RECONNECT_MAX_ATTEMPTS),
             foreground="#cc8800")
         self.frame.after(self._RECONNECT_INTERVAL_MS, self._try_reconnect)
 
@@ -544,9 +653,9 @@ class ConnectionTab(_BaseTab):
             return
         # Success
         resource = self._last_resource
-        self.log_pane.log(f"Auto-reconnect udany: {resource}", "ok")
+        self.log_pane.log(tr("reconnect_ok_log", res=resource), "ok")
         self._conn_status_lbl.config(
-            text=f"Status: Połączono (auto) — {resource}", foreground="#22aa44")
+            text=tr("reconnect_ok_status", res=resource), foreground="#22aa44")
         self._sync_ui_state(True)
         sensor_type = None
         resp = self.safe_query("SENSor:TYPE?")
@@ -1335,7 +1444,7 @@ class MeasurementsTab(_BaseTab):
         csv_frame.pack(fill=tk.X, pady=(0, 6))
 
         ttk.Label(csv_frame, text="File:").grid(row=0, column=0, sticky="w", padx=6, pady=4)
-        default_csv = f"measurements_{datetime.now().strftime('%Y%m%d')}.csv"
+        default_csv = f"measurements_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
         self._csv_path_entry = ttk.Entry(csv_frame, width=30)
         self._csv_path_entry.insert(0, default_csv)
         self._csv_path_entry.grid(row=0, column=1, padx=4)
@@ -1548,7 +1657,8 @@ class CalibrationTab(_BaseTab):
                    command=self._remove_point).pack(anchor="w", padx=6, pady=(0, 4))
 
         # ---- Polynomial degree ----
-        deg_frame = ttk.LabelFrame(left, text="Stopień wielomianu")
+        deg_frame = ttk.LabelFrame(left, text=tr("cal_poly_degree"))
+        self._tr(deg_frame, "cal_poly_degree")
         deg_frame.pack(fill=tk.X, pady=(0, 6))
         self._degree_var = tk.IntVar(value=3)
         inner = ttk.Frame(deg_frame)
@@ -2077,38 +2187,39 @@ class ConfigTab(_BaseTab):
 
     def _build(self):
         # ── Information section ────────────────────────────────────────────
-        info_frame = ttk.LabelFrame(self.frame, text="Trójwarstwowy system konfiguracji")
+        info_frame = ttk.LabelFrame(self.frame, text=tr("cfg_title"))
+        self._tr(info_frame, "cfg_title")
         info_frame.pack(fill=tk.X, pady=(0, 8))
 
-        info_text = (
-            "DEFAULT  — wartości fabryczne, zapisane w FLASH jako część firmware (adres 0x0801C000).\n"
-            "PRIMARY  — aktywna konfiguracja, wczytywana przy starcie (adres 0x0801C800).\n"
-            "BACKUP   — kopia PRIMARY, używana gdy PRIMARY jest uszkodzony (adres 0x0801D000).\n\n"
-            "Zmiany parametrów (czujnik, wyświetlacz) są przechowywane w RAM do momentu\n"
-            "jawnego zapisu komendą SAVE. Po resecie urządzenie wczytuje PRIMARY z FLASH."
-        )
-        ttk.Label(info_frame, text=info_text, justify=tk.LEFT,
-                  foreground="#444444").pack(anchor="w", padx=8, pady=6)
+        self._cfg_info_lbl = ttk.Label(info_frame, text=tr("cfg_info_text"),
+                                       justify=tk.LEFT, foreground="#444444")
+        self._tr(self._cfg_info_lbl, "cfg_info_text")
+        self._cfg_info_lbl.pack(anchor="w", padx=8, pady=6)
 
         # ── Dirty indicator ────────────────────────────────────────────────
-        status_frame = ttk.LabelFrame(self.frame, text="Stan konfiguracji")
+        status_frame = ttk.LabelFrame(self.frame, text=tr("cfg_status_frame"))
+        self._tr(status_frame, "cfg_status_frame")
         status_frame.pack(fill=tk.X, pady=(0, 8))
 
         status_inner = ttk.Frame(status_frame)
         status_inner.pack(fill=tk.X, padx=8, pady=6)
 
-        ttk.Label(status_inner, text="Niezapisane zmiany w RAM:").pack(side=tk.LEFT)
+        dirty_lbl = ttk.Label(status_inner, text=tr("cfg_dirty_label"))
+        self._tr(dirty_lbl, "cfg_dirty_label")
+        dirty_lbl.pack(side=tk.LEFT)
         self._dirty_label = ttk.Label(status_inner, textvariable=self._dirty_var,
                                       font=("", 10, "bold"), foreground="#888888", width=6)
         self._dirty_label.pack(side=tk.LEFT, padx=(6, 16))
 
-        refresh_btn = ttk.Button(status_inner, text="Odśwież", width=10,
+        refresh_btn = ttk.Button(status_inner, text=tr("cfg_refresh_btn"), width=10,
                                  command=self._refresh_dirty)
+        self._tr(refresh_btn, "cfg_refresh_btn")
         refresh_btn.pack(side=tk.LEFT)
         self._connected_widgets.append(refresh_btn)
 
         # ── Action buttons ─────────────────────────────────────────────────
-        act_frame = ttk.LabelFrame(self.frame, text="Operacje")
+        act_frame = ttk.LabelFrame(self.frame, text=tr("cfg_operations"))
+        self._tr(act_frame, "cfg_operations")
         act_frame.pack(fill=tk.X, pady=(0, 8))
 
         btn_grid = ttk.Frame(act_frame)
@@ -2118,27 +2229,27 @@ class ConfigTab(_BaseTab):
         save_btn = ttk.Button(btn_grid, text="💾  Save Config",
                               command=self._on_save, width=22)
         save_btn.grid(row=0, column=0, padx=6, pady=4, sticky="w")
-        ttk.Label(btn_grid,
-                  text="Zapisz bieżącą konfigurację RAM → PRIMARY + BACKUP (z CRC)",
-                  foreground="#555555").grid(row=0, column=1, padx=6, sticky="w")
+        save_desc = ttk.Label(btn_grid, text=tr("cfg_save_desc"), foreground="#555555")
+        self._tr(save_desc, "cfg_save_desc")
+        save_desc.grid(row=0, column=1, padx=6, sticky="w")
         self._connected_widgets.append(save_btn)
 
         # RESTORE
         restore_btn = ttk.Button(btn_grid, text="↩  Restore from Backup",
                                  command=self._on_restore, width=22)
         restore_btn.grid(row=1, column=0, padx=6, pady=4, sticky="w")
-        ttk.Label(btn_grid,
-                  text="Przywróć PRIMARY z BACKUP (naprawa uszkodzonego PRIMARY)",
-                  foreground="#555555").grid(row=1, column=1, padx=6, sticky="w")
+        restore_desc = ttk.Label(btn_grid, text=tr("cfg_restore_desc"), foreground="#555555")
+        self._tr(restore_desc, "cfg_restore_desc")
+        restore_desc.grid(row=1, column=1, padx=6, sticky="w")
         self._connected_widgets.append(restore_btn)
 
         # RECALL
         recall_btn = ttk.Button(btn_grid, text="🏭  Factory Recall",
                                 command=self._on_recall, width=22)
         recall_btn.grid(row=2, column=0, padx=6, pady=4, sticky="w")
-        ttk.Label(btn_grid,
-                  text="Przywróć ustawienia fabryczne (DEFAULT → PRIMARY + BACKUP)",
-                  foreground="#555555").grid(row=2, column=1, padx=6, sticky="w")
+        recall_desc = ttk.Label(btn_grid, text=tr("cfg_recall_desc"), foreground="#555555")
+        self._tr(recall_desc, "cfg_recall_desc")
+        recall_desc.grid(row=2, column=1, padx=6, sticky="w")
         self._connected_widgets.append(recall_btn)
 
         self._sync_ui_state(False)
@@ -2152,7 +2263,7 @@ class ConfigTab(_BaseTab):
         if resp is None:
             return
         dirty = resp.strip() not in ("0", "FALSE", "false")
-        self._dirty_var.set("TAK" if dirty else "NIE")
+        self._dirty_var.set(tr("cfg_yes") if dirty else tr("cfg_no"))
         self._dirty_label.config(foreground="#cc3333" if dirty else "#33aa55")
 
     def _on_save(self):
@@ -2166,10 +2277,7 @@ class ConfigTab(_BaseTab):
     def _on_restore(self):
         if not self.require_connection():
             return
-        if not messagebox.askyesno(
-                "Restore from Backup",
-                "Przywrócić PRIMARY z bloku BACKUP?\n"
-                "Bieżące niezapisane zmiany w PRIMARY zostaną utracone."):
+        if not messagebox.askyesno("Restore from Backup", tr("cfg_restore_msg")):
             return
         ok = self.safe_write("SYSTem:CONFig:RESTore")
         if ok:
@@ -2179,10 +2287,7 @@ class ConfigTab(_BaseTab):
     def _on_recall(self):
         if not self.require_connection():
             return
-        if not messagebox.askyesno(
-                "Factory Recall",
-                "Przywrócić ustawienia fabryczne (DEFAULT)?\n"
-                "PRIMARY i BACKUP zostaną nadpisane wartościami domyślnymi."):
+        if not messagebox.askyesno("Factory Recall", tr("cfg_recall_msg")):
             return
         ok = self.safe_write("SYSTem:CONFig:RECall")
         if ok:
@@ -2254,6 +2359,7 @@ class SDTApp:
 
         self.conn_tab.on_connect_callback    = self._on_device_connected
         self.conn_tab.on_disconnect_callback = self._on_device_disconnected
+        self.conn_tab.on_lang_change         = self._on_all_lang_change
 
         all_tabs = [self.conn_tab, self.sensor_tab, self.tmp117_tab, self.disp_tab,
                     self.sys_tab, self.config_tab, self.meas_tab,
@@ -2262,6 +2368,14 @@ class SDTApp:
             tab.on_comm_error = self.conn_tab._handle_external_disconnect
 
         self.log_pane.log("SDT Board Companion started — select a VISA resource and click Connect.", "info")
+
+    def _on_all_lang_change(self) -> None:
+        """Propagate language change to all tabs."""
+        all_tabs = [self.conn_tab, self.sensor_tab, self.tmp117_tab, self.disp_tab,
+                    self.sys_tab, self.config_tab, self.meas_tab,
+                    self.cal_tab, self.dfu_tab, self.console_tab]
+        for tab in all_tabs:
+            tab.refresh_lang()
 
     def _on_tab_changed(self, _event=None):
         try:

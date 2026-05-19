@@ -23,6 +23,17 @@
 /* Push error code and return SCPI_RES_ERR in one step */
 #define SCPI_PUSH_ERR(ctx, code)  do { SCPI_ErrorPush((ctx), (code)); return SCPI_RES_ERR; } while(0)
 
+/* System Memory bootloader — STM32C0 base address (RM0490 Table 2) */
+#define BOOT_ADDR  0x1FFF0000UL
+#define MCU_IRQS   48u
+
+struct boot_vectable_ {
+	uint32_t Initial_SP;
+	void (*Reset_Handler)(void);
+};
+
+#define BOOTVTAB  ((struct boot_vectable_ *)BOOT_ADDR)
+
 /* ===== SCPI callbacks ===== */
 
 static size_t SCPI_Write(scpi_t *context, const char *data, size_t len);
@@ -312,6 +323,10 @@ static scpi_result_t SCPI_SensorHumidityQ(scpi_t *context) {
 static scpi_result_t SCPI_SensorHeater(scpi_t *context) {
 	if (g_sensor.type == SENSOR_TMP117)
 		SCPI_PUSH_ERR(context, SCPI_ERROR_SETTINGS_CONFLICT);
+	if (g_sensor.type == SENSOR_NONE)
+		SCPI_PUSH_ERR(context, SCPI_ERROR_HARDWARE_MISSING);
+	if (g_sensor.type == SENSOR_ERROR)
+		SCPI_PUSH_ERR(context, SCPI_ERROR_HARDWARE_ERROR);
 	if (!g_sensor.ucValidFlag)
 		SCPI_PUSH_ERR(context, SCPI_ERROR_DATA_QUESTIONABLE);
 
@@ -324,16 +339,6 @@ static scpi_result_t SCPI_SystemBootloaderEnter(scpi_t *context) {
 
 	DisplayClearAll();
 	DisplayOff();
-
-#define BOOT_ADDR	0x1FFF0000	// my MCU boot code base address
-#define	MCU_IRQS	48u	// no. of NVIC IRQ inputs
-
-	struct boot_vectable_ {
-		uint32_t Initial_SP;
-		void (*Reset_Handler)(void);
-	};
-
-#define BOOTVTAB	((struct boot_vectable_ *)BOOT_ADDR)
 
 	/* Disable all interrupts */
 	__disable_irq();
@@ -547,7 +552,7 @@ static scpi_result_t SCPI_SensorAverage(scpi_t *context) {
 	else if (g_sensor.type == SENSOR_TMP117)
 	{
 		/* TMP117 hardware averaging: only 1, 8, 32, 64 are valid */
-		TMP117_Averaging_t avg;
+		TMP117_Averaging_t avg = TMP117_AVG_1;
 		if      (count == 1u)  avg = TMP117_AVG_1;
 		else if (count == 8u)  avg = TMP117_AVG_8;
 		else if (count == 32u) avg = TMP117_AVG_32;
@@ -730,7 +735,7 @@ static scpi_result_t SCPI_ConfigSave(scpi_t *context) {
 
 static scpi_result_t SCPI_ConfigRestore(scpi_t *context) {
 	ConfigStatus_t st = Config_Restore();
-	if (st == CONFIG_ERR_CRC || st == CONFIG_ERR_MAGIC)
+	if (st == CONFIG_ERR_CRC)
 		SCPI_PUSH_ERR(context, SCPI_ERROR_DATA_CORRUPT);
 	if (st == CONFIG_ERR_FLASH)
 		SCPI_PUSH_ERR(context, SCPI_ERROR_HARDWARE_ERROR);

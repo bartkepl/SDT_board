@@ -133,7 +133,7 @@ void Sensor_Task(void)
             TMP117_Task();
 
             if (s_tmp117_was_valid && !g_tmp117.ucValidFlag && g_tmp117.ucInitializedFlag)
-                Sensor_SetPendingError(SENSOR_ERR_COMM);
+                Sensor_SetPendingError(SENSOR_ERR_COMM);  /* I2C comm failure */
             s_tmp117_was_valid = g_tmp117.ucValidFlag;
 
             if (g_tmp117.ucValidFlag)
@@ -160,6 +160,9 @@ void Sensor_Task(void)
         {
             SHT45_Task();
 
+            /* SHT45 validates CRC on every read — loss of ucValidFlag can mean
+             * a failed CRC (data corruption) rather than a raw I2C error.
+             * SENSOR_ERR_DATA is therefore more precise here than SENSOR_ERR_COMM. */
             if (s_sht45_was_valid && !g_sht45.ucValidFlag && g_sht45.ucInitializedFlag)
                 Sensor_SetPendingError(SENSOR_ERR_DATA);
             s_sht45_was_valid = g_sht45.ucValidFlag;

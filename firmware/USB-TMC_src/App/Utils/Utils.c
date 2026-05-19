@@ -13,7 +13,7 @@
 
 #define SERIAL_RAW_LEN 20
 
-// 🔹 Bufory statyczne (inicjalizowane raz)
+// Static buffers (initialized once)
 static uint8_t serial_raw[SERIAL_RAW_LEN];
 static char serial_short[9];   // 8 + '\0'
 static char serial_full[41];   // 40 + '\0'
@@ -38,7 +38,7 @@ void SysTimZeroTimer1ms_u16(uint16_t *pusCnt) {
 
 
 
-// 🔹 FNV-1a (inline = szybciej)
+// FNV-1a hash (inline for speed)
 static inline uint32_t fnv1a_32(const uint8_t *data, size_t len)
 {
     uint32_t hash = 2166136261u;
@@ -53,7 +53,7 @@ static inline uint32_t fnv1a_32(const uint8_t *data, size_t len)
 }
 
 
-// 🔹 Zamiana na HEX (uniwersalna)
+// Convert byte array to uppercase hex string; out must hold 2*len+1 bytes
 static void to_hex(const uint8_t *in, size_t len, char *out)
 {
     static const char hex[] = "0123456789ABCDEF";
@@ -68,12 +68,12 @@ static void to_hex(const uint8_t *in, size_t len, char *out)
 }
 
 
-// 🔹 Inicjalizacja (wywoływana automatycznie)
+// One-time initialization of serial number buffers
 static void serial_init_once(void)
 {
     if (serial_initialized) return;
 
-    // 🔸 zbieranie danych BEZ memcpy
+    // Collect device identity words without memcpy
     uint32_t *p = (uint32_t *)serial_raw;
     p[0] = HAL_GetDEVID();
     p[1] = HAL_GetREVID();
@@ -81,7 +81,7 @@ static void serial_init_once(void)
     p[3] = HAL_GetUIDw1();
     p[4] = HAL_GetUIDw2();
 
-    // 🔸 hash → short serial
+    // Hash -> short serial (8 hex chars)
     uint32_t hash = fnv1a_32(serial_raw, SERIAL_RAW_LEN);
 
     static const char hex[] = "0123456789ABCDEF";
@@ -91,7 +91,7 @@ static void serial_init_once(void)
     }
     serial_short[8] = '\0';
 
-    // 🔸 pełny serial (40 znaków)
+    // Full serial (40 hex chars)
     to_hex(serial_raw, SERIAL_RAW_LEN, serial_full);
 
     serial_initialized = 1;
@@ -99,17 +99,17 @@ static void serial_init_once(void)
 
 
 // =====================================================
-// 🔹 PUBLIC API
+// PUBLIC API
 // =====================================================
 
-// krótki (8 znaków)
+// Short serial number (8 chars)
 const char *serial_get(void)
 {
     serial_init_once();
     return serial_short;
 }
 
-// pełny (40 znaków)
+// Full serial number (40 chars)
 const char *serial_get_full(void)
 {
     serial_init_once();

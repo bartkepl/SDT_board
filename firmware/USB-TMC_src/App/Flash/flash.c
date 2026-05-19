@@ -72,19 +72,9 @@ static const uint8_t __primary_reserved[sizeof(SDT_Config_t)];
 __attribute__((section(".config_backup"), used))
 static const uint8_t __backup_reserved[sizeof(SDT_Config_t)];
 
-/* Hardcoded fallback — identical to DEFAULT, used when DEFAULT flash is corrupt or wrong version */
-static const SDT_Config_t s_fallback = {
-    .magic=CONFIG_MAGIC, .version=CONFIG_VERSION,
-    .dispBrightness=20u, .dispState=1u, .dispSource=0u, ._r0=0u,
-    .sht45Precision=0xFDu, .sht45HeaterMode=0x1Eu,
-    .sht45ReadPeriodMs=1000u, .sht45AverageCount=1u, ._r1={0u,0u,0u},
-    .tmp117Mode=0u, .tmp117ConvRate=4u, .tmp117Avg=1u, ._r2=0u,
-    .tmp117ReadPeriodMs=1000u,
-    .tmp117AlertHighRaw=10240, .tmp117AlertLowRaw=-1280, ._r3={0u,0u},
-    .cal_a0=0.0f, .cal_a1=1.0f, .cal_a2=0.0f, .cal_a3=0.0f, .cal_a4=0.0f, .cal_a5=0.0f,
-    .cal_active=0u, ._r4=0u, .cal_date="----------", ._r5={0u,0u,0u,0u},
-    .crc32=0u, ._pad=0u,
-};
+/* Fallback defaults when DEFAULT flash block is missing or wrong version.
+ * Uses the compile-time constant s_default_flash — single source of truth. */
+#define s_fallback s_default_flash
 
 /* ===== Global RAM copy =============================================== */
 

@@ -36,6 +36,17 @@ void Display_Init(void){
 
 void ConvertFloatTempToChar(float t, char *buf)
 {
+    /* Operational range: -55..+99 °C. Outside this range display a label instead
+     * of a numeric value — temperatures this extreme indicate a hardware fault. */
+    if (t >= 100.0f) {
+        memcpy(buf, " OvRng  ", 8);
+        return;
+    }
+    if (t < -55.0f) {
+        memcpy(buf, " Undrng ", 8);
+        return;
+    }
+
     int temp = (int)(t * 1000.0f + (t >= 0 ? 0.5f : -0.5f)); // rounding
 
     char sign = ' ';
