@@ -46,28 +46,133 @@ DFU_TOOL_CANDIDATES = [
 
 _LANGS: dict[str, dict[str, str]] = {
     "EN": {
-        # ConnectionTab — auto-reconnect
+        # ── Common buttons ────────────────────────────────────────────────
+        "btn_set":          "Set",
+        "btn_get":          "Get",
+        "btn_read":         "Read",
+        "btn_query":        "Query",
+        "btn_refresh":      "Refresh",
+        "btn_connect":      "Connect",
+        "btn_disconnect":   "Disconnect",
+        "btn_browse":       "Browse…",
+        "btn_clear_log":    "Clear Log",
+        "btn_clear_data":   "Clear Data",
+        "btn_clear_output": "Clear Output",
+        "btn_send":         "Send",
+        "btn_write":        "Write",
+        # ── ConnectionTab ─────────────────────────────────────────────────
+        "frame_visa":           "VISA Resource",
+        "frame_dev_info":       "Device Info",
+        "frame_tips":           "Quick Tips",
+        "conn_tip_1": "• Connect to the device then explore tabs for all SCPI commands.",
+        "conn_tip_2": "• Console tab: send any arbitrary SCPI command with ↑/↓ history.",
+        "conn_tip_3": "• DFU Programmer tab: flash new firmware directly from the GUI.",
+        "conn_tip_4": "• Measurements tab: start cyclic polling and live plot.",
         "reconnect_fail_status":  "Status: Disconnected — reconnect failed",
         "reconnect_fail_log":     "Auto-reconnect failed after max attempts",
         "reconnect_attempt":      "Status: Reconnecting... (attempt {n}/{max})",
         "reconnect_ok_log":       "Auto-reconnect successful: {res}",
         "reconnect_ok_status":    "Status: Connected (auto) — {res}",
-        # CalibrationTab
-        "cal_poly_degree":        "Polynomial degree",
-        # ConfigTab — frame titles
-        "cfg_title":              "Three-tier Configuration System",
-        "cfg_status_frame":       "Configuration Status",
-        "cfg_operations":         "Operations",
-        # ConfigTab — labels / buttons
-        "cfg_dirty_label":        "Unsaved RAM changes:",
-        "cfg_refresh_btn":        "Refresh",
-        "cfg_save_desc":          "Save current RAM config → PRIMARY + BACKUP (with CRC)",
-        "cfg_restore_desc":       "Restore PRIMARY from BACKUP (repair corrupted PRIMARY)",
-        "cfg_recall_desc":        "Restore factory defaults (DEFAULT → PRIMARY + BACKUP)",
-        # ConfigTab — dirty flag values
-        "cfg_yes":                "YES",
-        "cfg_no":                 "NO",
-        # ConfigTab — info text (multiline label)
+        # ── SensorTab ─────────────────────────────────────────────────────
+        "frame_readings":       "Readings",
+        "frame_configuration":  "Configuration",
+        "frame_actions":        "Actions",
+        "lbl_temperature":      "Temperature:",
+        "lbl_humidity":         "Humidity:",
+        "lbl_sensor_type":      "Sensor Type:",
+        "lbl_sensor_id":        "Sensor ID:",
+        "lbl_read_period":      "Read Period (ms) [50–60000]:",
+        "lbl_average":          "Average (SHT45: 1–255 / TMP117: 1,8,32,64):",
+        "lbl_precision":        "Precision (SHT45 only):",
+        "btn_heater":           "Heater ON (SHT45)",
+        "btn_soft_reset":       "Soft Reset",
+        # ── TMP117Tab ─────────────────────────────────────────────────────
+        "frame_alert":          "Alert Thresholds",
+        "frame_conversion":     "Conversion",
+        "lbl_alert_high":       "Alert High [°C]:",
+        "lbl_alert_low":        "Alert Low [°C]:",
+        "lbl_mode":             "Mode:",
+        "lbl_conv_rate":        "Conv Rate (0–7):",
+        "btn_alert_status":     "Query Alert Status",
+        # ── DisplayTab ────────────────────────────────────────────────────
+        "frame_brightness":     "Brightness",
+        "frame_disp_state":     "Display State",
+        "frame_disp_source":    "Display Source",
+        "frame_disp_text":      "Display Text (max 8 characters)",
+        "lbl_bright_range":     "1–100:",
+        "lbl_disp_text":        "Text:",
+        "btn_set_state":        "Set State",
+        "btn_get_state":        "Get State",
+        "btn_set_source":       "Set Source",
+        "btn_get_source":       "Get Source",
+        "disp_src_meas":        "Measurement (0)",
+        "disp_src_text":        "User Text (1)",
+        # ── SystemTab ─────────────────────────────────────────────────────
+        "frame_ieee_regs":      "IEEE 488.2 Status Registers",
+        "frame_selftest":       "Self-Test & Error Queue",
+        "frame_sys_info":       "Device Info",
+        "frame_device_ctrl":    "Device Control",
+        "frame_misc_ieee":      "Misc IEEE 488.2",
+        "lbl_ese":              "ESE (Event Status Enable):",
+        "lbl_sre":              "SRE (Service Request Enable):",
+        "lbl_esr":              "ESR (Event Status Register):",
+        "lbl_stb":              "STB (Status Byte):",
+        "lbl_scpi_ver":         "SCPI Version:",
+        "btn_err_count":        "Error Count",
+        "btn_read_errors":      "Read All Errors",
+        "btn_clear_errors":     "Clear (*CLS)",
+        "btn_bootloader":       "Enter Bootloader  (SYSTem:BOOTloader:ENter)",
+        "btn_restart":          "Restart Device  (SYSTem:RST)",
+        "btn_opc_set":          "*OPC (set bit)",
+        # ── MeasurementsTab ───────────────────────────────────────────────
+        "frame_poll_cfg":       "Polling Configuration",
+        "frame_controls":       "Controls",
+        "frame_live":           "Live Readings",
+        "frame_csv":            "CSV Export",
+        "lbl_interval":         "Interval [s]:",
+        "lbl_samples":          "Samples:",
+        "lbl_csv_file":         "File:",
+        "btn_start_poll":       "▶  Start Polling",
+        "btn_stop_poll":        "■  Stop Polling",
+        "btn_open_plot":        "Open Plot",
+        "btn_start_csv":        "Start CSV",
+        "btn_stop_csv":         "Stop CSV",
+        # ── CalibrationTab ────────────────────────────────────────────────
+        "frame_cal_points":     "Calibration points  (T_measured, T_reference)",
+        "frame_cal_degree":     "Polynomial degree",
+        "frame_cal_actions":    "Actions",
+        "frame_cal_residuals":  "Residuals  (T_calibrated − T_reference)",
+        "lbl_t_measured":       "T measured [°C]:",
+        "lbl_t_reference":      "T reference [°C]:",
+        "btn_add_point":        "Add point",
+        "btn_remove_point":     "Remove selected",
+        "btn_fit":              "Fit polynomial",
+        "btn_send_cal":         "Send to device",
+        "btn_read_cal":         "Read from device",
+        "btn_reset_cal":        "Reset to identity (no correction)",
+        # ── DFUTab ────────────────────────────────────────────────────────
+        "frame_fw_file":        "Firmware File (.hex or .elf)",
+        "frame_flash_tool":     "Flash Tool",
+        "frame_flash_ctrl":     "Flash",
+        "frame_flash_log":      "Flash Log",
+        "btn_detect_tool":      "Detect Again",
+        "btn_flash":            "Flash Firmware",
+        # ── ConsoleTab ────────────────────────────────────────────────────
+        "frame_scpi_cmd":       "SCPI Command",
+        "frame_response":       "Response / Output",
+        "lbl_command":          "Command:",
+        "console_hint":         "↑/↓ for history  •  Commands ending with ? are queried; others are written",
+        # ── ConfigTab ─────────────────────────────────────────────────────
+        "cfg_title":            "Three-tier Configuration System",
+        "cfg_status_frame":     "Configuration Status",
+        "cfg_operations":       "Operations",
+        "cfg_dirty_label":      "Unsaved RAM changes:",
+        "cfg_refresh_btn":      "Refresh",
+        "cfg_save_desc":        "Save current RAM config → PRIMARY + BACKUP (with CRC)",
+        "cfg_restore_desc":     "Restore PRIMARY from BACKUP (repair corrupted PRIMARY)",
+        "cfg_recall_desc":      "Restore factory defaults (DEFAULT → PRIMARY + BACKUP)",
+        "cfg_yes":              "YES",
+        "cfg_no":               "NO",
         "cfg_info_text": (
             "DEFAULT  — factory defaults, baked into FLASH as part of firmware (addr 0x0801C000).\n"
             "PRIMARY  — active config, loaded on startup (addr 0x0801C800).\n"
@@ -75,33 +180,138 @@ _LANGS: dict[str, dict[str, str]] = {
             "Parameter changes (sensor, display) are held in RAM until explicitly saved\n"
             "with SAVE. On reset the device reloads PRIMARY from FLASH."
         ),
-        # ConfigTab — messagebox messages (called at event time)
-        "cfg_restore_msg":        "Restore PRIMARY from BACKUP?\nUnsaved changes in PRIMARY will be lost.",
-        "cfg_recall_msg":         "Restore factory defaults (DEFAULT)?\nPRIMARY and BACKUP will be overwritten.",
+        "cfg_restore_msg":      "Restore PRIMARY from BACKUP?\nUnsaved changes in PRIMARY will be lost.",
+        "cfg_recall_msg":       "Restore factory defaults (DEFAULT)?\nPRIMARY and BACKUP will be overwritten.",
     },
+
     "PL": {
-        # ConnectionTab — auto-reconnect
+        # ── Common buttons ────────────────────────────────────────────────
+        "btn_set":          "Ustaw",
+        "btn_get":          "Pobierz",
+        "btn_read":         "Odczytaj",
+        "btn_query":        "Zapytaj",
+        "btn_refresh":      "Odśwież",
+        "btn_connect":      "Połącz",
+        "btn_disconnect":   "Rozłącz",
+        "btn_browse":       "Przeglądaj…",
+        "btn_clear_log":    "Wyczyść log",
+        "btn_clear_data":   "Wyczyść dane",
+        "btn_clear_output": "Wyczyść wyjście",
+        "btn_send":         "Wyślij",
+        "btn_write":        "Zapisz",
+        # ── ConnectionTab ─────────────────────────────────────────────────
+        "frame_visa":           "Zasób VISA",
+        "frame_dev_info":       "Info o urządzeniu",
+        "frame_tips":           "Wskazówki",
+        "conn_tip_1": "• Połącz urządzenie, a następnie eksploruj zakładki dla komend SCPI.",
+        "conn_tip_2": "• Zakładka Konsola: wyślij dowolną komendę SCPI z historią ↑/↓.",
+        "conn_tip_3": "• Zakładka DFU: wgraj firmware bezpośrednio z GUI.",
+        "conn_tip_4": "• Zakładka Pomiary: uruchom cykliczny polling i wykres live.",
         "reconnect_fail_status":  "Status: Rozłączono — reconnect nieudany",
         "reconnect_fail_log":     "Auto-reconnect nieudany po wielu próbach",
         "reconnect_attempt":      "Status: Reconnect... (próba {n}/{max})",
         "reconnect_ok_log":       "Auto-reconnect udany: {res}",
         "reconnect_ok_status":    "Status: Połączono (auto) — {res}",
-        # CalibrationTab
-        "cal_poly_degree":        "Stopień wielomianu",
-        # ConfigTab — frame titles
-        "cfg_title":              "Trójwarstwowy system konfiguracji",
-        "cfg_status_frame":       "Stan konfiguracji",
-        "cfg_operations":         "Operacje",
-        # ConfigTab — labels / buttons
-        "cfg_dirty_label":        "Niezapisane zmiany w RAM:",
-        "cfg_refresh_btn":        "Odśwież",
-        "cfg_save_desc":          "Zapisz bieżącą konfigurację RAM → PRIMARY + BACKUP (z CRC)",
-        "cfg_restore_desc":       "Przywróć PRIMARY z BACKUP (naprawa uszkodzonego PRIMARY)",
-        "cfg_recall_desc":        "Przywróć ustawienia fabryczne (DEFAULT → PRIMARY + BACKUP)",
-        # ConfigTab — dirty flag values
-        "cfg_yes":                "TAK",
-        "cfg_no":                 "NIE",
-        # ConfigTab — info text (multiline label)
+        # ── SensorTab ─────────────────────────────────────────────────────
+        "frame_readings":       "Odczyty",
+        "frame_configuration":  "Konfiguracja",
+        "frame_actions":        "Akcje",
+        "lbl_temperature":      "Temperatura:",
+        "lbl_humidity":         "Wilgotność:",
+        "lbl_sensor_type":      "Typ czujnika:",
+        "lbl_sensor_id":        "ID czujnika:",
+        "lbl_read_period":      "Okres odczytu (ms) [50–60000]:",
+        "lbl_average":          "Uśrednianie (SHT45: 1–255 / TMP117: 1,8,32,64):",
+        "lbl_precision":        "Precyzja (tylko SHT45):",
+        "btn_heater":           "Grzałka ON (SHT45)",
+        "btn_soft_reset":       "Miękki reset",
+        # ── TMP117Tab ─────────────────────────────────────────────────────
+        "frame_alert":          "Progi alertów",
+        "frame_conversion":     "Konwersja",
+        "lbl_alert_high":       "Próg wysoki [°C]:",
+        "lbl_alert_low":        "Próg niski [°C]:",
+        "lbl_mode":             "Tryb:",
+        "lbl_conv_rate":        "Częst. konwersji (0–7):",
+        "btn_alert_status":     "Odczytaj status alertu",
+        # ── DisplayTab ────────────────────────────────────────────────────
+        "frame_brightness":     "Jasność",
+        "frame_disp_state":     "Stan wyświetlacza",
+        "frame_disp_source":    "Źródło wyświetlacza",
+        "frame_disp_text":      "Tekst wyświetlacza (maks. 8 znaków)",
+        "lbl_bright_range":     "1–100:",
+        "lbl_disp_text":        "Tekst:",
+        "btn_set_state":        "Ustaw stan",
+        "btn_get_state":        "Pobierz stan",
+        "btn_set_source":       "Ustaw źródło",
+        "btn_get_source":       "Pobierz źródło",
+        "disp_src_meas":        "Pomiar (0)",
+        "disp_src_text":        "Tekst użytkownika (1)",
+        # ── SystemTab ─────────────────────────────────────────────────────
+        "frame_ieee_regs":      "Rejestry statusu IEEE 488.2",
+        "frame_selftest":       "Autotest i kolejka błędów",
+        "frame_sys_info":       "Info o urządzeniu",
+        "frame_device_ctrl":    "Sterowanie urządzeniem",
+        "frame_misc_ieee":      "Inne IEEE 488.2",
+        "lbl_ese":              "ESE (Event Status Enable):",
+        "lbl_sre":              "SRE (Service Request Enable):",
+        "lbl_esr":              "ESR (Event Status Register):",
+        "lbl_stb":              "STB (Status Byte):",
+        "lbl_scpi_ver":         "Wersja SCPI:",
+        "btn_err_count":        "Liczba błędów",
+        "btn_read_errors":      "Odczytaj wszystkie błędy",
+        "btn_clear_errors":     "Wyczyść (*CLS)",
+        "btn_bootloader":       "Wejdź w bootloader  (SYSTem:BOOTloader:ENter)",
+        "btn_restart":          "Restart urządzenia  (SYSTem:RST)",
+        "btn_opc_set":          "*OPC (ustaw bit)",
+        # ── MeasurementsTab ───────────────────────────────────────────────
+        "frame_poll_cfg":       "Konfiguracja pollingu",
+        "frame_controls":       "Sterowanie",
+        "frame_live":           "Odczyty na żywo",
+        "frame_csv":            "Eksport CSV",
+        "lbl_interval":         "Interwał [s]:",
+        "lbl_samples":          "Próbki:",
+        "lbl_csv_file":         "Plik:",
+        "btn_start_poll":       "▶  Rozpocznij polling",
+        "btn_stop_poll":        "■  Zatrzymaj polling",
+        "btn_open_plot":        "Otwórz wykres",
+        "btn_start_csv":        "Start CSV",
+        "btn_stop_csv":         "Stop CSV",
+        # ── CalibrationTab ────────────────────────────────────────────────
+        "frame_cal_points":     "Punkty kalibracyjne  (T_zmierzona, T_referencyjna)",
+        "frame_cal_degree":     "Stopień wielomianu",
+        "frame_cal_actions":    "Akcje",
+        "frame_cal_residuals":  "Reszty  (T_skalibrowana − T_referencyjna)",
+        "lbl_t_measured":       "T zmierzona [°C]:",
+        "lbl_t_reference":      "T referencyjna [°C]:",
+        "btn_add_point":        "Dodaj punkt",
+        "btn_remove_point":     "Usuń zaznaczony",
+        "btn_fit":              "Dopasuj wielomian",
+        "btn_send_cal":         "Wyślij do urządzenia",
+        "btn_read_cal":         "Odczytaj z urządzenia",
+        "btn_reset_cal":        "Reset do identyczności (brak korekcji)",
+        # ── DFUTab ────────────────────────────────────────────────────────
+        "frame_fw_file":        "Plik firmware (.hex lub .elf)",
+        "frame_flash_tool":     "Narzędzie flash",
+        "frame_flash_ctrl":     "Programowanie",
+        "frame_flash_log":      "Log programowania",
+        "btn_detect_tool":      "Wykryj ponownie",
+        "btn_flash":            "Wgraj firmware",
+        # ── ConsoleTab ────────────────────────────────────────────────────
+        "frame_scpi_cmd":       "Komenda SCPI",
+        "frame_response":       "Odpowiedź / Wyjście",
+        "lbl_command":          "Komenda:",
+        "console_hint":         "↑/↓ historia  •  Komendy z ? to zapytania; pozostałe są wysyłane",
+        # ── ConfigTab ─────────────────────────────────────────────────────
+        "cfg_title":            "Trójwarstwowy system konfiguracji",
+        "cfg_status_frame":     "Stan konfiguracji",
+        "cfg_operations":       "Operacje",
+        "cfg_dirty_label":      "Niezapisane zmiany w RAM:",
+        "cfg_refresh_btn":      "Odśwież",
+        "cfg_save_desc":        "Zapisz bieżącą konfigurację RAM → PRIMARY + BACKUP (z CRC)",
+        "cfg_restore_desc":     "Przywróć PRIMARY z BACKUP (naprawa uszkodzonego PRIMARY)",
+        "cfg_recall_desc":      "Przywróć ustawienia fabryczne (DEFAULT → PRIMARY + BACKUP)",
+        "cfg_yes":              "TAK",
+        "cfg_no":               "NIE",
         "cfg_info_text": (
             "DEFAULT  — wartości fabryczne, zapisane w FLASH jako część firmware (adres 0x0801C000).\n"
             "PRIMARY  — aktywna konfiguracja, wczytywana przy starcie (adres 0x0801C800).\n"
@@ -109,9 +319,8 @@ _LANGS: dict[str, dict[str, str]] = {
             "Zmiany parametrów (czujnik, wyświetlacz) są przechowywane w RAM do momentu\n"
             "jawnego zapisu komendą SAVE. Po resecie urządzenie wczytuje PRIMARY z FLASH."
         ),
-        # ConfigTab — messagebox messages (called at event time)
-        "cfg_restore_msg":        "Przywrócić PRIMARY z bloku BACKUP?\nBieżące niezapisane zmiany w PRIMARY zostaną utracone.",
-        "cfg_recall_msg":         "Przywrócić ustawienia fabryczne (DEFAULT)?\nPRIMARY i BACKUP zostaną nadpisane wartościami domyślnymi.",
+        "cfg_restore_msg":      "Przywrócić PRIMARY z bloku BACKUP?\nBieżące niezapisane zmiany w PRIMARY zostaną utracone.",
+        "cfg_recall_msg":       "Przywrócić ustawienia fabryczne (DEFAULT)?\nPRIMARY i BACKUP zostaną nadpisane wartościami domyślnymi.",
     },
 }
 
@@ -457,14 +666,28 @@ class _BaseTab(_ScpiMixin):
         self._tr_items: list = []  # (widget, key, format_kwargs)
 
     def _tr(self, widget, key: str, **kwargs) -> object:
-        """Register a widget for automatic text refresh on language change."""
+        """Register a Label/Button for automatic text refresh on language change."""
         self._tr_items.append((widget, key, kwargs))
         return widget
 
+    def _tr_frame(self, frame: ttk.LabelFrame, key: str) -> ttk.LabelFrame:
+        """Register a LabelFrame title using a StringVar+labelwidget.
+        ttk.LabelFrame.config(text=...) does not reliably refresh on all platforms;
+        labelwidget with textvariable is the guaranteed approach."""
+        var = tk.StringVar(value=tr(key))
+        lbl = ttk.Label(frame, textvariable=var)
+        frame.configure(labelwidget=lbl)
+        # store StringVar (not widget) — refresh_lang distinguishes by type
+        self._tr_items.append((var, key, {}))
+        return frame
+
     def refresh_lang(self) -> None:
         """Update all registered translatable widgets to the current language."""
-        for widget, key, kwargs in self._tr_items:
-            widget.config(text=tr(key, **kwargs))
+        for item, key, kwargs in self._tr_items:
+            if isinstance(item, tk.StringVar):
+                item.set(tr(key, **kwargs))
+            else:
+                item.config(text=tr(key, **kwargs))
 
     def _sync_ui_state(self, connected: bool):
         state = "normal" if connected else "disabled"
@@ -501,27 +724,34 @@ class ConnectionTab(_BaseTab):
 
     def _build(self):
         # --- VISA Resource ---
-        res_frame = ttk.LabelFrame(self.frame, text="VISA Resource")
+        res_frame = ttk.LabelFrame(self.frame, text=tr("frame_visa"))
+        self._tr_frame(res_frame, "frame_visa")
         res_frame.pack(fill=tk.X, pady=(0, 6))
 
         self._resource_combo = ttk.Combobox(res_frame, width=46)
         self._resource_combo.grid(row=0, column=0, padx=5, pady=5)
-        ttk.Button(res_frame, text="Refresh",    command=self._on_refresh   ).grid(row=0, column=1, padx=2)
-        ttk.Button(res_frame, text="Connect",    command=self._on_connect   ).grid(row=0, column=2, padx=2)
-        ttk.Button(res_frame, text="Disconnect", command=self._on_disconnect).grid(row=0, column=3, padx=2)
+        b_ref = ttk.Button(res_frame, text=tr("btn_refresh"),    command=self._on_refresh)
+        b_con = ttk.Button(res_frame, text=tr("btn_connect"),    command=self._on_connect)
+        b_dis = ttk.Button(res_frame, text=tr("btn_disconnect"), command=self._on_disconnect)
+        self._tr(b_ref, "btn_refresh")
+        self._tr(b_con, "btn_connect")
+        self._tr(b_dis, "btn_disconnect")
+        b_ref.grid(row=0, column=1, padx=2)
+        b_con.grid(row=0, column=2, padx=2)
+        b_dis.grid(row=0, column=3, padx=2)
 
         self._conn_status_lbl = ttk.Label(res_frame, text="Status: Disconnected",
                                           foreground="#cc3333")
         self._conn_status_lbl.grid(row=1, column=0, columnspan=4, sticky="w", padx=5, pady=(0, 4))
 
         # --- Device Info ---
-        info_frame = ttk.LabelFrame(self.frame, text="Device Info")
+        info_frame = ttk.LabelFrame(self.frame, text=tr("frame_dev_info"))
+        self._tr_frame(info_frame, "frame_dev_info")
         info_frame.pack(fill=tk.X, pady=(0, 6))
 
         idn_btn = ttk.Button(info_frame, text="*IDN?", command=self._on_idn, width=10)
         idn_btn.grid(row=0, column=0, padx=6, pady=5)
-        self._idn_lbl = ttk.Label(info_frame, text="—", anchor="w",
-                                   font=("Courier New", 9))
+        self._idn_lbl = ttk.Label(info_frame, text="—", anchor="w", font=("Courier New", 9))
         self._idn_lbl.grid(row=0, column=1, sticky="ew", padx=4)
         info_frame.columnconfigure(1, weight=1)
         self._connected_widgets.append(idn_btn)
@@ -533,17 +763,16 @@ class ConnectionTab(_BaseTab):
         self._connected_widgets.append(ver_btn)
 
         # --- Quick Tips ---
-        tip_frame = ttk.LabelFrame(self.frame, text="Quick Tips")
+        tip_frame = ttk.LabelFrame(self.frame, text=tr("frame_tips"))
+        self._tr_frame(tip_frame, "frame_tips")
         tip_frame.pack(fill=tk.X, pady=(0, 6))
-        tips = (
-            "• Connect to the device then explore tabs for all SCPI commands.",
-            "• Console tab: send any arbitrary SCPI command with ↑/↓ history.",
-            "• DFU Programmer tab: flash new firmware directly from the GUI.",
-            "• Measurements tab: start cyclic polling and live plot.",
-        )
-        for i, t in enumerate(tips):
-            ttk.Label(tip_frame, text=t, anchor="w").grid(row=i, column=0,
-                                                           sticky="w", padx=8, pady=1)
+        tip_keys = ("conn_tip_1", "conn_tip_2", "conn_tip_3", "conn_tip_4")
+        self._tip_labels = []
+        for i, key in enumerate(tip_keys):
+            lbl = ttk.Label(tip_frame, text=tr(key), anchor="w")
+            self._tr(lbl, key)
+            lbl.grid(row=i, column=0, sticky="w", padx=8, pady=1)
+            self._tip_labels.append(lbl)
 
         # --- Language ---
         lang_frame = ttk.LabelFrame(self.frame, text="Language / Język")
@@ -690,75 +919,92 @@ class SensorTab(_BaseTab):
 
     def _build(self):
         # --- Readings ---
-        rd_frame = ttk.LabelFrame(self.frame, text="Readings")
+        rd_frame = ttk.LabelFrame(self.frame, text=tr("frame_readings"))
+        self._tr_frame(rd_frame, "frame_readings")
         rd_frame.pack(fill=tk.X, pady=(0, 6))
         rd_frame.columnconfigure(1, weight=1)
 
         rows = [
-            ("Temperature:", "temp_val", "°C",  self._read_temperature),
-            ("Humidity:",    "hum_val",  "%RH", self._read_humidity),
-            ("Sensor Type:", "type_val", "",    self._query_sensor_type),
-            ("Sensor ID:",   "id_val",   "",    self._query_sensor_id),
+            ("lbl_temperature", "temp_val", "°C",  self._read_temperature),
+            ("lbl_humidity",    "hum_val",  "%RH", self._read_humidity),
+            ("lbl_sensor_type", "type_val", "",    self._query_sensor_type),
+            ("lbl_sensor_id",   "id_val",   "",    self._query_sensor_id),
         ]
         self._rd_labels = {}
-        for i, (lbl, key, unit, cmd) in enumerate(rows):
-            ttk.Label(rd_frame, text=lbl, anchor="w", width=15).grid(row=i, column=0, padx=6, pady=3, sticky="w")
+        for i, (lbl_key, val_key, unit, cmd) in enumerate(rows):
+            lbl = ttk.Label(rd_frame, text=tr(lbl_key), anchor="w", width=15)
+            self._tr(lbl, lbl_key)
+            lbl.grid(row=i, column=0, padx=6, pady=3, sticky="w")
             val_lbl = ttk.Label(rd_frame, text="—", anchor="w", width=20,
                                 font=("Courier New", 10, "bold"))
             val_lbl.grid(row=i, column=1, padx=4, sticky="ew")
-            self._rd_labels[key] = val_lbl
+            self._rd_labels[val_key] = val_lbl
             if unit:
                 ttk.Label(rd_frame, text=unit).grid(row=i, column=2, padx=2)
-            btn = ttk.Button(rd_frame, text="Read" if "Type" not in lbl and "ID" not in lbl else "Query",
-                             command=cmd, width=8)
+            btn_key = "btn_read" if val_key in ("temp_val", "hum_val") else "btn_query"
+            btn = ttk.Button(rd_frame, text=tr(btn_key), command=cmd, width=8)
+            self._tr(btn, btn_key)
             btn.grid(row=i, column=3, padx=6)
             self._connected_widgets.append(btn)
 
         # --- Configuration ---
-        cfg_frame = ttk.LabelFrame(self.frame, text="Configuration")
+        cfg_frame = ttk.LabelFrame(self.frame, text=tr("frame_configuration"))
+        self._tr_frame(cfg_frame, "frame_configuration")
         cfg_frame.pack(fill=tk.X, pady=(0, 6))
 
         # Read Period
-        ttk.Label(cfg_frame, text="Read Period (ms) [50–60000]:").grid(row=0, column=0, sticky="w", padx=6, pady=3)
+        lbl_per = ttk.Label(cfg_frame, text=tr("lbl_read_period"))
+        self._tr(lbl_per, "lbl_read_period")
+        lbl_per.grid(row=0, column=0, sticky="w", padx=6, pady=3)
         self._period_entry = ttk.Entry(cfg_frame, width=10)
         self._period_entry.insert(0, "500")
         self._period_entry.grid(row=0, column=1, padx=4)
-        set_per = ttk.Button(cfg_frame, text="Set", command=self._set_read_period, width=6)
-        get_per = ttk.Button(cfg_frame, text="Get", command=self._get_read_period, width=6)
+        set_per = ttk.Button(cfg_frame, text=tr("btn_set"), command=self._set_read_period, width=6)
+        get_per = ttk.Button(cfg_frame, text=tr("btn_get"), command=self._get_read_period, width=6)
+        self._tr(set_per, "btn_set"); self._tr(get_per, "btn_get")
         set_per.grid(row=0, column=2, padx=2)
         get_per.grid(row=0, column=3, padx=2)
         self._connected_widgets += [set_per, get_per]
 
         # Average
-        ttk.Label(cfg_frame, text="Average (SHT45: 1–255 / TMP117: 1,8,32,64):").grid(row=1, column=0, sticky="w", padx=6, pady=3)
+        lbl_avg = ttk.Label(cfg_frame, text=tr("lbl_average"))
+        self._tr(lbl_avg, "lbl_average")
+        lbl_avg.grid(row=1, column=0, sticky="w", padx=6, pady=3)
         self._avg_entry = ttk.Entry(cfg_frame, width=10)
         self._avg_entry.insert(0, "1")
         self._avg_entry.grid(row=1, column=1, padx=4)
-        set_avg = ttk.Button(cfg_frame, text="Set", command=self._set_average, width=6)
-        get_avg = ttk.Button(cfg_frame, text="Get", command=self._get_average, width=6)
+        set_avg = ttk.Button(cfg_frame, text=tr("btn_set"), command=self._set_average, width=6)
+        get_avg = ttk.Button(cfg_frame, text=tr("btn_get"), command=self._get_average, width=6)
+        self._tr(set_avg, "btn_set"); self._tr(get_avg, "btn_get")
         set_avg.grid(row=1, column=2, padx=2)
         get_avg.grid(row=1, column=3, padx=2)
         self._connected_widgets += [set_avg, get_avg]
 
         # Precision (SHT45 only)
-        ttk.Label(cfg_frame, text="Precision (SHT45 only):").grid(row=2, column=0, sticky="w", padx=6, pady=3)
+        lbl_prec = ttk.Label(cfg_frame, text=tr("lbl_precision"))
+        self._tr(lbl_prec, "lbl_precision")
+        lbl_prec.grid(row=2, column=0, sticky="w", padx=6, pady=3)
         self._precision_var = tk.StringVar(value="HIGH")
         self._precision_combo = ttk.Combobox(cfg_frame, textvariable=self._precision_var,
                                               values=["LOW", "MEDIUM", "HIGH"],
                                               state="readonly", width=10)
         self._precision_combo.grid(row=2, column=1, padx=4)
-        set_prec = ttk.Button(cfg_frame, text="Set", command=self._set_precision, width=6)
-        get_prec = ttk.Button(cfg_frame, text="Get", command=self._get_precision, width=6)
+        set_prec = ttk.Button(cfg_frame, text=tr("btn_set"), command=self._set_precision, width=6)
+        get_prec = ttk.Button(cfg_frame, text=tr("btn_get"), command=self._get_precision, width=6)
+        self._tr(set_prec, "btn_set"); self._tr(get_prec, "btn_get")
         set_prec.grid(row=2, column=2, padx=2)
         get_prec.grid(row=2, column=3, padx=2)
         self._connected_widgets += [set_prec, get_prec]
 
         # --- Actions ---
-        act_frame = ttk.LabelFrame(self.frame, text="Actions")
+        act_frame = ttk.LabelFrame(self.frame, text=tr("frame_actions"))
+        self._tr_frame(act_frame, "frame_actions")
         act_frame.pack(fill=tk.X, pady=(0, 6))
-        heater_btn = ttk.Button(act_frame, text="Heater ON (SHT45)", command=self._run_heater, width=22)
+        heater_btn = ttk.Button(act_frame, text=tr("btn_heater"), command=self._run_heater, width=22)
+        self._tr(heater_btn, "btn_heater")
         heater_btn.grid(row=0, column=0, padx=8, pady=5)
-        reset_btn = ttk.Button(act_frame, text="Soft Reset", command=self._soft_reset, width=14)
+        reset_btn = ttk.Button(act_frame, text=tr("btn_soft_reset"), command=self._soft_reset, width=14)
+        self._tr(reset_btn, "btn_soft_reset")
         reset_btn.grid(row=0, column=1, padx=8)
         self._connected_widgets += [heater_btn, reset_btn]
 
@@ -874,58 +1120,70 @@ class TMP117Tab(_BaseTab):
         self._na_label.pack(anchor="w", pady=(0, 4))
 
         # --- Alert Thresholds ---
-        alert_frame = ttk.LabelFrame(self.frame, text="Alert Thresholds")
+        alert_frame = ttk.LabelFrame(self.frame, text=tr("frame_alert"))
+        self._tr_frame(alert_frame, "frame_alert")
         alert_frame.pack(fill=tk.X, pady=(0, 6))
 
-        ttk.Label(alert_frame, text="Alert High [°C]:").grid(row=0, column=0, sticky="w", padx=6, pady=4)
+        lbl_ah = ttk.Label(alert_frame, text=tr("lbl_alert_high"))
+        self._tr(lbl_ah, "lbl_alert_high")
+        lbl_ah.grid(row=0, column=0, sticky="w", padx=6, pady=4)
         self._alert_high_entry = ttk.Entry(alert_frame, width=12)
         self._alert_high_entry.insert(0, "85.0")
         self._alert_high_entry.grid(row=0, column=1, padx=4)
-        self._alert_high_cur = ttk.Label(alert_frame, text="", width=12,
-                                          font=("Courier New", 9))
+        self._alert_high_cur = ttk.Label(alert_frame, text="", width=12, font=("Courier New", 9))
         self._alert_high_cur.grid(row=0, column=2, padx=4)
-        set_ah = ttk.Button(alert_frame, text="Set", command=self._set_alert_high, width=6)
-        get_ah = ttk.Button(alert_frame, text="Get", command=self._get_alert_high, width=6)
+        set_ah = ttk.Button(alert_frame, text=tr("btn_set"), command=self._set_alert_high, width=6)
+        get_ah = ttk.Button(alert_frame, text=tr("btn_get"), command=self._get_alert_high, width=6)
+        self._tr(set_ah, "btn_set"); self._tr(get_ah, "btn_get")
         set_ah.grid(row=0, column=3, padx=2)
         get_ah.grid(row=0, column=4, padx=2)
         self._connected_widgets += [set_ah, get_ah]
 
-        ttk.Label(alert_frame, text="Alert Low [°C]:").grid(row=1, column=0, sticky="w", padx=6, pady=4)
+        lbl_al = ttk.Label(alert_frame, text=tr("lbl_alert_low"))
+        self._tr(lbl_al, "lbl_alert_low")
+        lbl_al.grid(row=1, column=0, sticky="w", padx=6, pady=4)
         self._alert_low_entry = ttk.Entry(alert_frame, width=12)
         self._alert_low_entry.insert(0, "0.0")
         self._alert_low_entry.grid(row=1, column=1, padx=4)
-        self._alert_low_cur = ttk.Label(alert_frame, text="", width=12,
-                                         font=("Courier New", 9))
+        self._alert_low_cur = ttk.Label(alert_frame, text="", width=12, font=("Courier New", 9))
         self._alert_low_cur.grid(row=1, column=2, padx=4)
-        set_al = ttk.Button(alert_frame, text="Set", command=self._set_alert_low, width=6)
-        get_al = ttk.Button(alert_frame, text="Get", command=self._get_alert_low, width=6)
+        set_al = ttk.Button(alert_frame, text=tr("btn_set"), command=self._set_alert_low, width=6)
+        get_al = ttk.Button(alert_frame, text=tr("btn_get"), command=self._get_alert_low, width=6)
+        self._tr(set_al, "btn_set"); self._tr(get_al, "btn_get")
         set_al.grid(row=1, column=3, padx=2)
         get_al.grid(row=1, column=4, padx=2)
         self._connected_widgets += [set_al, get_al]
 
-        status_btn = ttk.Button(alert_frame, text="Query Alert Status", command=self._get_alert_status)
+        status_btn = ttk.Button(alert_frame, text=tr("btn_alert_status"), command=self._get_alert_status)
+        self._tr(status_btn, "btn_alert_status")
         status_btn.grid(row=2, column=0, columnspan=2, padx=6, pady=4, sticky="w")
         self._alert_status_lbl = ttk.Label(alert_frame, text="—", font=("Courier New", 9, "bold"))
         self._alert_status_lbl.grid(row=2, column=2, columnspan=3, padx=4, sticky="w")
         self._connected_widgets.append(status_btn)
 
         # --- Conversion ---
-        conv_frame = ttk.LabelFrame(self.frame, text="Conversion")
+        conv_frame = ttk.LabelFrame(self.frame, text=tr("frame_conversion"))
+        self._tr_frame(conv_frame, "frame_conversion")
         conv_frame.pack(fill=tk.X, pady=(0, 6))
 
-        ttk.Label(conv_frame, text="Mode:").grid(row=0, column=0, sticky="w", padx=6, pady=4)
+        lbl_mode = ttk.Label(conv_frame, text=tr("lbl_mode"))
+        self._tr(lbl_mode, "lbl_mode")
+        lbl_mode.grid(row=0, column=0, sticky="w", padx=6, pady=4)
         self._mode_var = tk.StringVar(value="CONTINUOUS")
         self._mode_combo = ttk.Combobox(conv_frame, textvariable=self._mode_var,
                                          values=["CONTINUOUS", "SHUTDOWN", "ONESHOT"],
                                          state="readonly", width=14)
         self._mode_combo.grid(row=0, column=1, padx=4)
-        set_mode = ttk.Button(conv_frame, text="Set", command=self._set_mode, width=6)
-        get_mode = ttk.Button(conv_frame, text="Get", command=self._get_mode, width=6)
+        set_mode = ttk.Button(conv_frame, text=tr("btn_set"), command=self._set_mode, width=6)
+        get_mode = ttk.Button(conv_frame, text=tr("btn_get"), command=self._get_mode, width=6)
+        self._tr(set_mode, "btn_set"); self._tr(get_mode, "btn_get")
         set_mode.grid(row=0, column=2, padx=2)
         get_mode.grid(row=0, column=3, padx=2)
         self._connected_widgets += [set_mode, get_mode]
 
-        ttk.Label(conv_frame, text="Conv Rate (0–7):").grid(row=1, column=0, sticky="w", padx=6, pady=4)
+        lbl_cr = ttk.Label(conv_frame, text=tr("lbl_conv_rate"))
+        self._tr(lbl_cr, "lbl_conv_rate")
+        lbl_cr.grid(row=1, column=0, sticky="w", padx=6, pady=4)
         self._conv_rate_var = tk.IntVar(value=4)
         self._conv_spin = ttk.Spinbox(conv_frame, from_=0, to=7,
                                        textvariable=self._conv_rate_var, width=5)
@@ -933,8 +1191,9 @@ class TMP117Tab(_BaseTab):
         self._conv_rate_lbl = ttk.Label(conv_frame, text=f"→ {CONV_RATE_LABELS[4]}",
                                          foreground="#555555", width=12)
         self._conv_rate_lbl.grid(row=1, column=2, padx=4, sticky="w")
-        set_cr = ttk.Button(conv_frame, text="Set", command=self._set_conv_rate, width=6)
-        get_cr = ttk.Button(conv_frame, text="Get", command=self._get_conv_rate, width=6)
+        set_cr = ttk.Button(conv_frame, text=tr("btn_set"), command=self._set_conv_rate, width=6)
+        get_cr = ttk.Button(conv_frame, text=tr("btn_get"), command=self._get_conv_rate, width=6)
+        self._tr(set_cr, "btn_set"); self._tr(get_cr, "btn_get")
         set_cr.grid(row=1, column=3, padx=2)
         get_cr.grid(row=1, column=4, padx=2)
         self._connected_widgets += [set_cr, get_cr]
@@ -1041,60 +1300,74 @@ class DisplayTab(_BaseTab):
 
     def _build(self):
         # --- Brightness ---
-        br_frame = ttk.LabelFrame(self.frame, text="Brightness")
+        br_frame = ttk.LabelFrame(self.frame, text=tr("frame_brightness"))
+        self._tr_frame(br_frame, "frame_brightness")
         br_frame.pack(fill=tk.X, pady=(0, 6))
 
-        ttk.Label(br_frame, text="1–100:").grid(row=0, column=0, padx=6, pady=5)
+        lbl_br = ttk.Label(br_frame, text=tr("lbl_bright_range"))
+        self._tr(lbl_br, "lbl_bright_range")
+        lbl_br.grid(row=0, column=0, padx=6, pady=5)
         self._brightness_val_lbl = ttk.Label(br_frame, text="20", width=4, anchor="e")
         self._brightness_scale = ttk.Scale(br_frame, from_=1, to=100, orient=tk.HORIZONTAL,
                                             length=220, command=self._on_brightness_change)
         self._brightness_scale.set(20)
         self._brightness_scale.grid(row=0, column=1, padx=4)
         self._brightness_val_lbl.grid(row=0, column=2, padx=2)
-        set_br = ttk.Button(br_frame, text="Set", command=self._set_brightness, width=6)
-        get_br = ttk.Button(br_frame, text="Get", command=self._get_brightness, width=6)
+        set_br = ttk.Button(br_frame, text=tr("btn_set"), command=self._set_brightness, width=6)
+        get_br = ttk.Button(br_frame, text=tr("btn_get"), command=self._get_brightness, width=6)
+        self._tr(set_br, "btn_set"); self._tr(get_br, "btn_get")
         set_br.grid(row=0, column=3, padx=2)
         get_br.grid(row=0, column=4, padx=2)
         self._connected_widgets += [set_br, get_br]
 
         # --- State ---
-        state_frame = ttk.LabelFrame(self.frame, text="Display State")
+        state_frame = ttk.LabelFrame(self.frame, text=tr("frame_disp_state"))
+        self._tr_frame(state_frame, "frame_disp_state")
         state_frame.pack(fill=tk.X, pady=(0, 6))
         self._display_state = tk.StringVar(value="1")
         ttk.Radiobutton(state_frame, text="ON",  variable=self._display_state, value="1").grid(row=0, column=0, padx=8)
         ttk.Radiobutton(state_frame, text="OFF", variable=self._display_state, value="0").grid(row=0, column=1, padx=8)
-        set_st = ttk.Button(state_frame, text="Set State", command=self._set_state, width=10)
-        get_st = ttk.Button(state_frame, text="Get State", command=self._get_state, width=10)
+        set_st = ttk.Button(state_frame, text=tr("btn_set_state"), command=self._set_state, width=10)
+        get_st = ttk.Button(state_frame, text=tr("btn_get_state"), command=self._get_state, width=10)
+        self._tr(set_st, "btn_set_state"); self._tr(get_st, "btn_get_state")
         set_st.grid(row=0, column=2, padx=4, pady=5)
         get_st.grid(row=0, column=3, padx=4)
         self._connected_widgets += [set_st, get_st]
 
         # --- Source ---
-        src_frame = ttk.LabelFrame(self.frame, text="Display Source")
+        src_frame = ttk.LabelFrame(self.frame, text=tr("frame_disp_source"))
+        self._tr_frame(src_frame, "frame_disp_source")
         src_frame.pack(fill=tk.X, pady=(0, 6))
         self._display_source = tk.StringVar(value="0")
-        ttk.Radiobutton(src_frame, text="Measurement (0)", variable=self._display_source, value="0").grid(row=0, column=0, padx=8)
-        ttk.Radiobutton(src_frame, text="User Text (1)",   variable=self._display_source, value="1").grid(row=0, column=1, padx=8)
-        set_src = ttk.Button(src_frame, text="Set Source", command=self._set_source, width=10)
-        get_src = ttk.Button(src_frame, text="Get Source", command=self._get_source, width=10)
+        rb_meas = ttk.Radiobutton(src_frame, text=tr("disp_src_meas"), variable=self._display_source, value="0")
+        rb_text = ttk.Radiobutton(src_frame, text=tr("disp_src_text"), variable=self._display_source, value="1")
+        self._tr(rb_meas, "disp_src_meas"); self._tr(rb_text, "disp_src_text")
+        rb_meas.grid(row=0, column=0, padx=8)
+        rb_text.grid(row=0, column=1, padx=8)
+        set_src = ttk.Button(src_frame, text=tr("btn_set_source"), command=self._set_source, width=10)
+        get_src = ttk.Button(src_frame, text=tr("btn_get_source"), command=self._get_source, width=10)
+        self._tr(set_src, "btn_set_source"); self._tr(get_src, "btn_get_source")
         set_src.grid(row=0, column=2, padx=4, pady=5)
         get_src.grid(row=0, column=3, padx=4)
         self._connected_widgets += [set_src, get_src]
 
         # --- Text ---
-        txt_frame = ttk.LabelFrame(self.frame, text="Display Text (max 8 characters)")
+        txt_frame = ttk.LabelFrame(self.frame, text=tr("frame_disp_text"))
+        self._tr_frame(txt_frame, "frame_disp_text")
         txt_frame.pack(fill=tk.X, pady=(0, 6))
-        ttk.Label(txt_frame, text="Text:").grid(row=0, column=0, padx=6, pady=5)
+        lbl_txt = ttk.Label(txt_frame, text=tr("lbl_disp_text"))
+        self._tr(lbl_txt, "lbl_disp_text")
+        lbl_txt.grid(row=0, column=0, padx=6, pady=5)
         self._text_entry = ttk.Entry(txt_frame, width=12)
         self._text_entry.insert(0, "????????")
         self._text_entry.grid(row=0, column=1, padx=4)
-        write_txt = ttk.Button(txt_frame, text="Write", command=self._write_text, width=8)
-        read_txt  = ttk.Button(txt_frame, text="Read",  command=self._read_text,  width=8)
+        write_txt = ttk.Button(txt_frame, text=tr("btn_write"), command=self._write_text, width=8)
+        read_txt  = ttk.Button(txt_frame, text=tr("btn_read"),  command=self._read_text,  width=8)
+        self._tr(write_txt, "btn_write"); self._tr(read_txt, "btn_read")
         write_txt.grid(row=0, column=2, padx=2)
         read_txt.grid(row=0, column=3,  padx=2)
         self._connected_widgets += [write_txt, read_txt]
-        self._cur_text_lbl = ttk.Label(txt_frame, text="Current: —",
-                                        font=("Courier New", 10))
+        self._cur_text_lbl = ttk.Label(txt_frame, text="Current: —", font=("Courier New", 10))
         self._cur_text_lbl.grid(row=1, column=0, columnspan=4, padx=6, pady=(0, 4), sticky="w")
 
         self._sync_ui_state(False)
@@ -1161,10 +1434,13 @@ class SystemTab(_BaseTab):
 
     def _build(self):
         # --- IEEE 488.2 Registers ---
-        reg_frame = ttk.LabelFrame(self.frame, text="IEEE 488.2 Status Registers")
+        reg_frame = ttk.LabelFrame(self.frame, text=tr("frame_ieee_regs"))
+        self._tr_frame(reg_frame, "frame_ieee_regs")
         reg_frame.pack(fill=tk.X, pady=(0, 6))
 
-        ttk.Label(reg_frame, text="ESE (Event Status Enable):").grid(row=0, column=0, sticky="w", padx=6, pady=3)
+        lbl_ese = ttk.Label(reg_frame, text=tr("lbl_ese"))
+        self._tr(lbl_ese, "lbl_ese")
+        lbl_ese.grid(row=0, column=0, sticky="w", padx=6, pady=3)
         self._ese_entry = ttk.Entry(reg_frame, width=8)
         self._ese_entry.insert(0, "0")
         self._ese_entry.grid(row=0, column=1, padx=4)
@@ -1174,7 +1450,9 @@ class SystemTab(_BaseTab):
         get_ese.grid(row=0, column=3, padx=2)
         self._connected_widgets += [set_ese, get_ese]
 
-        ttk.Label(reg_frame, text="SRE (Service Request Enable):").grid(row=1, column=0, sticky="w", padx=6, pady=3)
+        lbl_sre = ttk.Label(reg_frame, text=tr("lbl_sre"))
+        self._tr(lbl_sre, "lbl_sre")
+        lbl_sre.grid(row=1, column=0, sticky="w", padx=6, pady=3)
         self._sre_entry = ttk.Entry(reg_frame, width=8)
         self._sre_entry.insert(0, "0")
         self._sre_entry.grid(row=1, column=1, padx=4)
@@ -1184,14 +1462,18 @@ class SystemTab(_BaseTab):
         get_sre.grid(row=1, column=3, padx=2)
         self._connected_widgets += [set_sre, get_sre]
 
-        ttk.Label(reg_frame, text="ESR (Event Status Register):").grid(row=2, column=0, sticky="w", padx=6, pady=3)
+        lbl_esr = ttk.Label(reg_frame, text=tr("lbl_esr"))
+        self._tr(lbl_esr, "lbl_esr")
+        lbl_esr.grid(row=2, column=0, sticky="w", padx=6, pady=3)
         self._esr_lbl = ttk.Label(reg_frame, text="—", width=8, font=("Courier New", 9))
         self._esr_lbl.grid(row=2, column=1, padx=4)
         get_esr = ttk.Button(reg_frame, text="Query *ESR?", command=self._get_esr, width=12)
         get_esr.grid(row=2, column=2, padx=2)
         self._connected_widgets.append(get_esr)
 
-        ttk.Label(reg_frame, text="STB (Status Byte):").grid(row=3, column=0, sticky="w", padx=6, pady=3)
+        lbl_stb = ttk.Label(reg_frame, text=tr("lbl_stb"))
+        self._tr(lbl_stb, "lbl_stb")
+        lbl_stb.grid(row=3, column=0, sticky="w", padx=6, pady=3)
         self._stb_lbl = ttk.Label(reg_frame, text="—", width=8, font=("Courier New", 9))
         self._stb_lbl.grid(row=3, column=1, padx=4)
         get_stb = ttk.Button(reg_frame, text="Query *STB?", command=self._get_stb, width=12)
@@ -1201,7 +1483,8 @@ class SystemTab(_BaseTab):
         self._connected_widgets += [get_stb, opc_btn]
 
         # --- Self Test & Error Queue ---
-        err_frame = ttk.LabelFrame(self.frame, text="Self-Test & Error Queue")
+        err_frame = ttk.LabelFrame(self.frame, text=tr("frame_selftest"))
+        self._tr_frame(err_frame, "frame_selftest")
         err_frame.pack(fill=tk.X, pady=(0, 6))
 
         tst_btn = ttk.Button(err_frame, text="*TST?", command=self._run_self_test, width=8)
@@ -1209,21 +1492,26 @@ class SystemTab(_BaseTab):
         self._tst_lbl = ttk.Label(err_frame, text="—", width=16, font=("Courier New", 9, "bold"))
         self._tst_lbl.grid(row=0, column=1, padx=4)
 
-        cnt_btn = ttk.Button(err_frame, text="Error Count",   command=self._get_error_count, width=12)
-        all_btn = ttk.Button(err_frame, text="Read All Errors", command=self._read_error_queue, width=14)
-        cls_btn = ttk.Button(err_frame, text="Clear (*CLS)", command=self._clear_errors, width=12)
+        cnt_btn = ttk.Button(err_frame, text=tr("btn_err_count"),  command=self._get_error_count, width=12)
+        all_btn = ttk.Button(err_frame, text=tr("btn_read_errors"), command=self._read_error_queue, width=14)
+        cls_btn = ttk.Button(err_frame, text=tr("btn_clear_errors"), command=self._clear_errors, width=12)
+        self._tr(cnt_btn, "btn_err_count")
+        self._tr(all_btn, "btn_read_errors")
+        self._tr(cls_btn, "btn_clear_errors")
         cnt_btn.grid(row=1, column=0, padx=6, pady=4)
         all_btn.grid(row=1, column=1, padx=4)
         cls_btn.grid(row=1, column=2, padx=4)
         self._connected_widgets += [tst_btn, cnt_btn, all_btn, cls_btn]
 
         # --- Device Info ---
-        info_frame = ttk.LabelFrame(self.frame, text="Device Info")
+        info_frame = ttk.LabelFrame(self.frame, text=tr("frame_sys_info"))
+        self._tr_frame(info_frame, "frame_sys_info")
         info_frame.pack(fill=tk.X, pady=(0, 6))
 
-        ttk.Label(info_frame, text="SCPI Version:").grid(row=0, column=0, sticky="w", padx=6, pady=3)
-        self._sysver_lbl = ttk.Label(info_frame, text="—", width=10,
-                                      font=("Courier New", 9))
+        lbl_scpiver = ttk.Label(info_frame, text=tr("lbl_scpi_ver"))
+        self._tr(lbl_scpiver, "lbl_scpi_ver")
+        lbl_scpiver.grid(row=0, column=0, sticky="w", padx=6, pady=3)
+        self._sysver_lbl = ttk.Label(info_frame, text="—", width=10, font=("Courier New", 9))
         self._sysver_lbl.grid(row=0, column=1, padx=4)
         ver_btn = ttk.Button(info_frame, text="SYST:VER?", command=self._get_sys_version, width=10)
         ver_btn.grid(row=0, column=2, padx=2)
@@ -1239,28 +1527,29 @@ class SystemTab(_BaseTab):
         self._connected_widgets.append(id_btn)
 
         # --- Device Control ---
-        ctrl_frame = ttk.LabelFrame(self.frame, text="Device Control")
+        ctrl_frame = ttk.LabelFrame(self.frame, text=tr("frame_device_ctrl"))
+        self._tr_frame(ctrl_frame, "frame_device_ctrl")
         ctrl_frame.pack(fill=tk.X, pady=(0, 6))
 
-        boot_btn = ttk.Button(ctrl_frame, text="Enter Bootloader  (SYSTem:BOOTloader:ENter)",
-                               command=self._enter_bootloader)
+        boot_btn = ttk.Button(ctrl_frame, text=tr("btn_bootloader"), command=self._enter_bootloader)
+        self._tr(boot_btn, "btn_bootloader")
         boot_btn.grid(row=0, column=0, padx=8, pady=6, sticky="w")
-        rst_btn  = ttk.Button(ctrl_frame, text="Restart Device  (SYSTem:RST)",
-                               command=self._restart_device)
+        rst_btn = ttk.Button(ctrl_frame, text=tr("btn_restart"), command=self._restart_device)
+        self._tr(rst_btn, "btn_restart")
         rst_btn.grid(row=1, column=0, padx=8, pady=(0, 6), sticky="w")
         self._connected_widgets += [boot_btn, rst_btn]
 
         # --- *OPC / *WAI ---
-        misc_frame = ttk.LabelFrame(self.frame, text="Misc IEEE 488.2")
+        misc_frame = ttk.LabelFrame(self.frame, text=tr("frame_misc_ieee"))
+        self._tr_frame(misc_frame, "frame_misc_ieee")
         misc_frame.pack(fill=tk.X, pady=(0, 6))
-        for col, (text, cmd) in enumerate([
-            ("*OPC (set bit)", "*OPC"),
-            ("*WAI", "*WAI"),
-            ("*RST", "*RST"),
-            ("*CLS", "*CLS"),
-        ]):
-            btn = ttk.Button(misc_frame, text=text, width=16,
+        misc_items = [("btn_opc_set", "*OPC"), ("*WAI", "*WAI"), ("*RST", "*RST"), ("*CLS", "*CLS")]
+        for col, (text_or_key, cmd) in enumerate(misc_items):
+            label = tr(text_or_key) if text_or_key in _LANGS["EN"] else text_or_key
+            btn = ttk.Button(misc_frame, text=label, width=16,
                              command=lambda c=cmd: self.safe_write(c))
+            if text_or_key in _LANGS["EN"]:
+                self._tr(btn, text_or_key)
             btn.grid(row=0, column=col, padx=4, pady=5)
             self._connected_widgets.append(btn)
 
@@ -1394,67 +1683,85 @@ class MeasurementsTab(_BaseTab):
         right.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(8, 0))
 
         # --- Polling Configuration ---
-        poll_frame = ttk.LabelFrame(left, text="Polling Configuration")
+        poll_frame = ttk.LabelFrame(left, text=tr("frame_poll_cfg"))
+        self._tr_frame(poll_frame, "frame_poll_cfg")
         poll_frame.pack(fill=tk.X, pady=(0, 6))
 
-        ttk.Label(poll_frame, text="Interval [s]:").grid(row=0, column=0, sticky="w", padx=6, pady=4)
+        lbl_int = ttk.Label(poll_frame, text=tr("lbl_interval"))
+        self._tr(lbl_int, "lbl_interval")
+        lbl_int.grid(row=0, column=0, sticky="w", padx=6, pady=4)
         self._interval_entry = ttk.Entry(poll_frame, width=10)
         self._interval_entry.insert(0, "2.0")
         self._interval_entry.grid(row=0, column=1, padx=4)
 
         # --- Controls ---
-        ctrl_frame = ttk.LabelFrame(left, text="Controls")
+        ctrl_frame = ttk.LabelFrame(left, text=tr("frame_controls"))
+        self._tr_frame(ctrl_frame, "frame_controls")
         ctrl_frame.pack(fill=tk.X, pady=(0, 6))
 
-        self._start_btn = ttk.Button(ctrl_frame, text="▶  Start Polling",
+        self._start_btn = ttk.Button(ctrl_frame, text=tr("btn_start_poll"),
                                       command=self._start_polling, width=18)
-        self._stop_btn  = ttk.Button(ctrl_frame, text="■  Stop Polling",
+        self._stop_btn  = ttk.Button(ctrl_frame, text=tr("btn_stop_poll"),
                                       command=self._stop_polling, width=18)
+        self._tr(self._start_btn, "btn_start_poll")
+        self._tr(self._stop_btn,  "btn_stop_poll")
         self._start_btn.grid(row=0, column=0, padx=6, pady=5)
         self._stop_btn.grid( row=0, column=1, padx=4)
         self._connected_widgets.append(self._start_btn)
 
-        plot_btn  = ttk.Button(ctrl_frame, text="Open Plot",  command=self._plot_window.open, width=12)
-        clear_btn = ttk.Button(ctrl_frame, text="Clear Data", command=self._clear_data,       width=12)
+        plot_btn  = ttk.Button(ctrl_frame, text=tr("btn_open_plot"), command=self._plot_window.open, width=12)
+        clear_btn = ttk.Button(ctrl_frame, text=tr("btn_clear_data"), command=self._clear_data, width=12)
+        self._tr(plot_btn, "btn_open_plot"); self._tr(clear_btn, "btn_clear_data")
         plot_btn.grid( row=1, column=0, padx=6, pady=(0, 5))
         clear_btn.grid(row=1, column=1, padx=4)
 
         # --- Live Readings ---
-        live_frame = ttk.LabelFrame(left, text="Live Readings")
+        live_frame = ttk.LabelFrame(left, text=tr("frame_live"))
+        self._tr_frame(live_frame, "frame_live")
         live_frame.pack(fill=tk.X, pady=(0, 6))
 
-        ttk.Label(live_frame, text="Temperature:").grid(row=0, column=0, sticky="w", padx=6, pady=3)
+        lbl_lt = ttk.Label(live_frame, text=tr("lbl_temperature"))
+        self._tr(lbl_lt, "lbl_temperature")
+        lbl_lt.grid(row=0, column=0, sticky="w", padx=6, pady=3)
         self._live_temp_lbl = ttk.Label(live_frame, text="—", width=14,
                                          font=("Courier New", 12, "bold"), foreground="#e05533")
         self._live_temp_lbl.grid(row=0, column=1, padx=4)
         ttk.Label(live_frame, text="°C").grid(row=0, column=2)
 
-        ttk.Label(live_frame, text="Humidity:").grid(row=1, column=0, sticky="w", padx=6, pady=3)
+        lbl_lh = ttk.Label(live_frame, text=tr("lbl_humidity"))
+        self._tr(lbl_lh, "lbl_humidity")
+        lbl_lh.grid(row=1, column=0, sticky="w", padx=6, pady=3)
         self._live_hum_lbl = ttk.Label(live_frame, text="—", width=14,
                                         font=("Courier New", 12, "bold"), foreground="#3366cc")
         self._live_hum_lbl.grid(row=1, column=1, padx=4)
         ttk.Label(live_frame, text="%RH").grid(row=1, column=2)
 
-        ttk.Label(live_frame, text="Samples:").grid(row=2, column=0, sticky="w", padx=6, pady=3)
+        lbl_samp = ttk.Label(live_frame, text=tr("lbl_samples"))
+        self._tr(lbl_samp, "lbl_samples")
+        lbl_samp.grid(row=2, column=0, sticky="w", padx=6, pady=3)
         self._sample_count_lbl = ttk.Label(live_frame, text="0", font=("Courier New", 10))
         self._sample_count_lbl.grid(row=2, column=1, padx=4)
 
         # --- CSV Export ---
-        csv_frame = ttk.LabelFrame(right, text="CSV Export")
+        csv_frame = ttk.LabelFrame(right, text=tr("frame_csv"))
+        self._tr_frame(csv_frame, "frame_csv")
         csv_frame.pack(fill=tk.X, pady=(0, 6))
 
-        ttk.Label(csv_frame, text="File:").grid(row=0, column=0, sticky="w", padx=6, pady=4)
+        lbl_csv = ttk.Label(csv_frame, text=tr("lbl_csv_file"))
+        self._tr(lbl_csv, "lbl_csv_file")
+        lbl_csv.grid(row=0, column=0, sticky="w", padx=6, pady=4)
         default_csv = f"measurements_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
         self._csv_path_entry = ttk.Entry(csv_frame, width=30)
         self._csv_path_entry.insert(0, default_csv)
         self._csv_path_entry.grid(row=0, column=1, padx=4)
-        browse_btn = ttk.Button(csv_frame, text="Browse…", command=self._browse_csv, width=8)
+        browse_btn = ttk.Button(csv_frame, text=tr("btn_browse"), command=self._browse_csv, width=8)
+        self._tr(browse_btn, "btn_browse")
         browse_btn.grid(row=0, column=2, padx=2)
 
-        self._start_csv_btn = ttk.Button(csv_frame, text="Start CSV",
-                                          command=self._start_csv, width=10)
-        self._stop_csv_btn  = ttk.Button(csv_frame, text="Stop CSV",
-                                          command=self._stop_csv, width=10)
+        self._start_csv_btn = ttk.Button(csv_frame, text=tr("btn_start_csv"), command=self._start_csv, width=10)
+        self._stop_csv_btn  = ttk.Button(csv_frame, text=tr("btn_stop_csv"),  command=self._stop_csv,  width=10)
+        self._tr(self._start_csv_btn, "btn_start_csv")
+        self._tr(self._stop_csv_btn,  "btn_stop_csv")
         self._csv_status_lbl = ttk.Label(csv_frame, text="Not logging", foreground="#888888")
         self._start_csv_btn.grid(row=1, column=0, padx=6, pady=4)
         self._stop_csv_btn.grid( row=1, column=1, padx=4)
@@ -1637,28 +1944,36 @@ class CalibrationTab(_BaseTab):
         right.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(10, 0))
 
         # ---- Point entry ----
-        entry_frame = ttk.LabelFrame(left, text="Calibration points  (T_measured, T_reference)")
+        entry_frame = ttk.LabelFrame(left, text=tr("frame_cal_points"))
+        self._tr_frame(entry_frame, "frame_cal_points")
         entry_frame.pack(fill=tk.X, pady=(0, 6))
 
         row0 = ttk.Frame(entry_frame)
         row0.pack(fill=tk.X, padx=6, pady=4)
-        ttk.Label(row0, text="T measured [°C]:").grid(row=0, column=0, sticky="w")
+        lbl_tm = ttk.Label(row0, text=tr("lbl_t_measured"))
+        self._tr(lbl_tm, "lbl_t_measured")
+        lbl_tm.grid(row=0, column=0, sticky="w")
         self._meas_entry = ttk.Entry(row0, width=12)
         self._meas_entry.grid(row=0, column=1, padx=4)
-        ttk.Label(row0, text="T reference [°C]:").grid(row=0, column=2, sticky="w", padx=(8, 0))
+        lbl_tr = ttk.Label(row0, text=tr("lbl_t_reference"))
+        self._tr(lbl_tr, "lbl_t_reference")
+        lbl_tr.grid(row=0, column=2, sticky="w", padx=(8, 0))
         self._ref_entry = ttk.Entry(row0, width=12)
         self._ref_entry.grid(row=0, column=3, padx=4)
-        ttk.Button(row0, text="Add point", command=self._add_point).grid(row=0, column=4, padx=4)
+        add_btn = ttk.Button(row0, text=tr("btn_add_point"), command=self._add_point)
+        self._tr(add_btn, "btn_add_point")
+        add_btn.grid(row=0, column=4, padx=4)
 
         self._point_list = tk.Listbox(entry_frame, height=8, width=36,
                                       selectmode=tk.SINGLE, font=("Courier New", 9))
         self._point_list.pack(fill=tk.X, padx=6, pady=(0, 4))
-        ttk.Button(entry_frame, text="Remove selected",
-                   command=self._remove_point).pack(anchor="w", padx=6, pady=(0, 4))
+        rem_btn = ttk.Button(entry_frame, text=tr("btn_remove_point"), command=self._remove_point)
+        self._tr(rem_btn, "btn_remove_point")
+        rem_btn.pack(anchor="w", padx=6, pady=(0, 4))
 
         # ---- Polynomial degree ----
-        deg_frame = ttk.LabelFrame(left, text=tr("cal_poly_degree"))
-        self._tr(deg_frame, "cal_poly_degree")
+        deg_frame = ttk.LabelFrame(left, text=tr("frame_cal_degree"))
+        self._tr_frame(deg_frame, "frame_cal_degree")
         deg_frame.pack(fill=tk.X, pady=(0, 6))
         self._degree_var = tk.IntVar(value=3)
         inner = ttk.Frame(deg_frame)
@@ -1668,22 +1983,27 @@ class CalibrationTab(_BaseTab):
                             value=d).grid(row=0, column=d - 1, padx=6)
 
         # ---- Actions ----
-        act_frame = ttk.LabelFrame(left, text="Actions")
+        act_frame = ttk.LabelFrame(left, text=tr("frame_cal_actions"))
+        self._tr_frame(act_frame, "frame_cal_actions")
         act_frame.pack(fill=tk.X, pady=(0, 6))
-        ttk.Button(act_frame, text="Fit polynomial",
-                   command=self._fit).pack(fill=tk.X, padx=6, pady=3)
-        self._send_btn = ttk.Button(act_frame, text="Send to device",
+        fit_btn = ttk.Button(act_frame, text=tr("btn_fit"), command=self._fit)
+        self._tr(fit_btn, "btn_fit")
+        fit_btn.pack(fill=tk.X, padx=6, pady=3)
+        self._send_btn = ttk.Button(act_frame, text=tr("btn_send_cal"),
                                      command=self._send_to_device, state="disabled")
+        self._tr(self._send_btn, "btn_send_cal")
         self._send_btn.pack(fill=tk.X, padx=6, pady=3)
         self._connected_widgets.append(self._send_btn)
 
-        self._read_btn = ttk.Button(act_frame, text="Read from device",
+        self._read_btn = ttk.Button(act_frame, text=tr("btn_read_cal"),
                                      command=self._read_from_device)
+        self._tr(self._read_btn, "btn_read_cal")
         self._read_btn.pack(fill=tk.X, padx=6, pady=3)
         self._connected_widgets.append(self._read_btn)
 
-        self._reset_btn = ttk.Button(act_frame, text="Reset to identity (no correction)",
+        self._reset_btn = ttk.Button(act_frame, text=tr("btn_reset_cal"),
                                       command=self._reset_on_device)
+        self._tr(self._reset_btn, "btn_reset_cal")
         self._reset_btn.pack(fill=tk.X, padx=6, pady=3)
         self._connected_widgets.append(self._reset_btn)
 
@@ -1693,7 +2013,8 @@ class CalibrationTab(_BaseTab):
         self._result_lbl.pack(anchor="w", padx=6)
 
         # ---- Residuals plot ----
-        plot_frame = ttk.LabelFrame(right, text="Residuals  (T_calibrated − T_reference)")
+        plot_frame = ttk.LabelFrame(right, text=tr("frame_cal_residuals"))
+        self._tr_frame(plot_frame, "frame_cal_residuals")
         plot_frame.pack(fill=tk.BOTH, expand=True)
         self._plot_frame = plot_frame
 
@@ -1861,22 +2182,27 @@ class DFUTab(_BaseTab):
 
     def _build(self):
         # --- Firmware File ---
-        file_frame = ttk.LabelFrame(self.frame, text="Firmware File (.hex or .elf)")
+        file_frame = ttk.LabelFrame(self.frame, text=tr("frame_fw_file"))
+        self._tr_frame(file_frame, "frame_fw_file")
         file_frame.pack(fill=tk.X, pady=(0, 6))
 
         self._file_entry = ttk.Entry(file_frame, width=52)
         self._file_entry.grid(row=0, column=0, padx=6, pady=6)
-        browse_btn = ttk.Button(file_frame, text="Browse…", command=self._browse_file, width=8)
+        browse_btn = ttk.Button(file_frame, text=tr("btn_browse"), command=self._browse_file, width=8)
+        self._tr(browse_btn, "btn_browse")
         browse_btn.grid(row=0, column=1, padx=4)
 
         # --- Tool Detection ---
-        tool_frame = ttk.LabelFrame(self.frame, text="Flash Tool")
+        tool_frame = ttk.LabelFrame(self.frame, text=tr("frame_flash_tool"))
+        self._tr_frame(tool_frame, "frame_flash_tool")
         tool_frame.pack(fill=tk.X, pady=(0, 6))
 
         self._tool_lbl = ttk.Label(tool_frame, text="Detecting…", anchor="w")
         self._tool_lbl.grid(row=0, column=0, padx=8, pady=4, sticky="w")
-        ttk.Button(tool_frame, text="Detect Again", command=self._detect_and_show, width=14
-                   ).grid(row=0, column=1, padx=4)
+        detect_btn = ttk.Button(tool_frame, text=tr("btn_detect_tool"),
+                                command=self._detect_and_show, width=14)
+        self._tr(detect_btn, "btn_detect_tool")
+        detect_btn.grid(row=0, column=1, padx=4)
 
         self._tool_help_lbl = ttk.Label(
             tool_frame,
@@ -1887,11 +2213,13 @@ class DFUTab(_BaseTab):
         )
 
         # --- Flash Controls ---
-        ctrl_frame = ttk.LabelFrame(self.frame, text="Flash")
+        ctrl_frame = ttk.LabelFrame(self.frame, text=tr("frame_flash_ctrl"))
+        self._tr_frame(ctrl_frame, "frame_flash_ctrl")
         ctrl_frame.pack(fill=tk.X, pady=(0, 6))
 
-        self._flash_btn = ttk.Button(ctrl_frame, text="Flash Firmware",
+        self._flash_btn = ttk.Button(ctrl_frame, text=tr("btn_flash"),
                                       command=self._on_flash_click, width=20)
+        self._tr(self._flash_btn, "btn_flash")
         self._flash_btn.grid(row=0, column=0, padx=8, pady=8)
         self._flash_step_lbl = ttk.Label(ctrl_frame, text="Idle", anchor="w", width=40)
         self._flash_step_lbl.grid(row=0, column=1, padx=4)
@@ -1909,14 +2237,16 @@ class DFUTab(_BaseTab):
         info_lbl.grid(row=2, column=0, columnspan=2, padx=8, pady=(0, 6), sticky="w")
 
         # --- Flash Log ---
-        log_frame = ttk.LabelFrame(self.frame, text="Flash Log")
+        log_frame = ttk.LabelFrame(self.frame, text=tr("frame_flash_log"))
+        self._tr_frame(log_frame, "frame_flash_log")
         log_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 6))
 
         self._flash_log = scrolledtext.ScrolledText(
             log_frame, height=10, font=("Courier New", 9), state="disabled")
         self._flash_log.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
-        ttk.Button(log_frame, text="Clear Log",
-                   command=self._clear_flash_log).pack(anchor="e", padx=4, pady=(0, 4))
+        clr_btn = ttk.Button(log_frame, text=tr("btn_clear_log"), command=self._clear_flash_log)
+        self._tr(clr_btn, "btn_clear_log")
+        clr_btn.pack(anchor="e", padx=4, pady=(0, 4))
 
         self._detect_and_show()
 
@@ -2083,28 +2413,33 @@ class ConsoleTab(_BaseTab):
         self._build()
 
     def _build(self):
-        cmd_frame = ttk.LabelFrame(self.frame, text="SCPI Command")
+        cmd_frame = ttk.LabelFrame(self.frame, text=tr("frame_scpi_cmd"))
+        self._tr_frame(cmd_frame, "frame_scpi_cmd")
         cmd_frame.pack(fill=tk.X, pady=(0, 6))
 
-        ttk.Label(cmd_frame, text="Command:").grid(row=0, column=0, padx=6, pady=6)
+        lbl_cmd = ttk.Label(cmd_frame, text=tr("lbl_command"))
+        self._tr(lbl_cmd, "lbl_command")
+        lbl_cmd.grid(row=0, column=0, padx=6, pady=6)
         self._cmd_entry = ttk.Entry(cmd_frame, width=52, font=("Courier New", 10))
         self._cmd_entry.grid(row=0, column=1, padx=4)
         self._cmd_entry.bind("<Return>", self._on_send)
         self._cmd_entry.bind("<Up>",    self._history_up)
         self._cmd_entry.bind("<Down>",  self._history_down)
 
-        send_btn = ttk.Button(cmd_frame, text="Send", command=self._on_send, width=8)
+        send_btn = ttk.Button(cmd_frame, text=tr("btn_send"), command=self._on_send, width=8)
+        self._tr(send_btn, "btn_send")
         send_btn.grid(row=0, column=2, padx=4)
-        ttk.Button(cmd_frame, text="Clear Output", command=self._clear_output, width=12
-                   ).grid(row=0, column=3, padx=4)
+        clr_btn = ttk.Button(cmd_frame, text=tr("btn_clear_output"), command=self._clear_output, width=12)
+        self._tr(clr_btn, "btn_clear_output")
+        clr_btn.grid(row=0, column=3, padx=4)
         self._connected_widgets.append(send_btn)
 
-        ttk.Label(cmd_frame,
-                  text="↑/↓ for history  •  Commands ending with ? are queried; others are written",
-                  foreground="#888888"
-                  ).grid(row=1, column=0, columnspan=4, padx=6, pady=(0, 4), sticky="w")
+        hint_lbl = ttk.Label(cmd_frame, text=tr("console_hint"), foreground="#888888")
+        self._tr(hint_lbl, "console_hint")
+        hint_lbl.grid(row=1, column=0, columnspan=4, padx=6, pady=(0, 4), sticky="w")
 
-        out_frame = ttk.LabelFrame(self.frame, text="Response / Output")
+        out_frame = ttk.LabelFrame(self.frame, text=tr("frame_response"))
+        self._tr_frame(out_frame, "frame_response")
         out_frame.pack(fill=tk.BOTH, expand=True)
 
         self._output = scrolledtext.ScrolledText(
@@ -2188,7 +2523,7 @@ class ConfigTab(_BaseTab):
     def _build(self):
         # ── Information section ────────────────────────────────────────────
         info_frame = ttk.LabelFrame(self.frame, text=tr("cfg_title"))
-        self._tr(info_frame, "cfg_title")
+        self._tr_frame(info_frame, "cfg_title")
         info_frame.pack(fill=tk.X, pady=(0, 8))
 
         self._cfg_info_lbl = ttk.Label(info_frame, text=tr("cfg_info_text"),
@@ -2198,7 +2533,7 @@ class ConfigTab(_BaseTab):
 
         # ── Dirty indicator ────────────────────────────────────────────────
         status_frame = ttk.LabelFrame(self.frame, text=tr("cfg_status_frame"))
-        self._tr(status_frame, "cfg_status_frame")
+        self._tr_frame(status_frame, "cfg_status_frame")
         status_frame.pack(fill=tk.X, pady=(0, 8))
 
         status_inner = ttk.Frame(status_frame)
@@ -2219,7 +2554,7 @@ class ConfigTab(_BaseTab):
 
         # ── Action buttons ─────────────────────────────────────────────────
         act_frame = ttk.LabelFrame(self.frame, text=tr("cfg_operations"))
-        self._tr(act_frame, "cfg_operations")
+        self._tr_frame(act_frame, "cfg_operations")
         act_frame.pack(fill=tk.X, pady=(0, 8))
 
         btn_grid = ttk.Frame(act_frame)
